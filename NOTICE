@@ -1,0 +1,41 @@
+ZX1 Retro Interface
+===================
+
+This project is a modified version of Light Android Launcher:
+https://github.com/light-launcher/Light-Android-Launcher
+
+Original project contributors retain copyright in their work.
+The original and modified program are distributed under GNU GPL v2.
+See LICENSE for the complete license text.
+
+Summary of modifications (2026):
+- replaced the launcher's screens with a dedicated digital-audio-player
+  interface for the Sony NW-ZX1, in a late-1990s Sony portable-audio
+  design language (an STN-LCD glass set into a graphite chassis, with
+  an amber TUBE AMP alternate style), on a reproducible,
+  dependency-free API 16 build;
+- added a now-playing layer that reads the playing track, play state,
+  timing, and audio format live from the firmware player's service
+  binder and Sony's media database (this firmware broadcasts no
+  metadata), rendering the track's album art in period LCD tones or
+  full color and scrolling long titles MiniDisc-deck style;
+- added an in-launcher music library browser (playlists / artists /
+  albums / songs) over the firmware's media database, cached for
+  instant opens and refreshed by a short-lived broadcast-triggered
+  background service, which starts playback on the firmware player
+  through the player's own binder protocol without leaving the
+  launcher;
+- added launcher-owned playlists stored as playlists in Android's own
+  media database, so each list is simultaneously a stored list and a
+  real playback queue the firmware player accepts - create, rename,
+  delete, add, remove, play from any track, and append to the playing
+  queue without interrupting playback;
+- brought the chassis spectrum window to life without audio capture
+  (impossible on this hardware): a lowest-priority background service
+  analyzes each track once, on its first play, into a small stored
+  envelope replayed in sync with the player's own clock, carrying
+  original ALAC and FLAC decoders written from the published format
+  specifications for the formats the firmware's Android media stack
+  cannot decode.
+
+This independent project is not affiliated with or endorsed by Sony.

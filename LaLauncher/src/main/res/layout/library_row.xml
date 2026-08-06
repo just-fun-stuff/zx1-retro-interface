@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Library list row: optional index, title with optional sub-line, and an
+     optional right-hand datum (duration, count, or chevron). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="54dp"
+    android:orientation="horizontal"
+    android:paddingLeft="8dp"
+    android:paddingTop="6dp"
+    android:paddingRight="8dp"
+    android:paddingBottom="6dp">
+
+    <TextView
+        android:id="@+id/lib_row_index"
+        android:layout_width="42dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:textColor="@color/lcd_ink_dim"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/lib_row_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:singleLine="true"
+            android:textColor="@color/lcd_ink"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/lib_row_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:singleLine="true"
+            android:textColor="@color/lcd_ink_dim"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Album-level HR chip: inverted block like the home quality line's,
+         lit only when every track on the disc is hi-res. -->
+    <TextView
+        android:id="@+id/lib_row_hr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:background="@color/lcd_ink"
+        android:fontFamily="monospace"
+        android:paddingLeft="4dp"
+        android:paddingTop="1dp"
+        android:paddingRight="4dp"
+        android:paddingBottom="1dp"
+        android:text="HR"
+        android:textColor="@color/lcd_surface"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/lib_row_right"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:fontFamily="monospace"
+        android:textColor="@color/lcd_ink_dim"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</LinearLayout>

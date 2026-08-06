@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User-facing copy for ZX1 Retro Interface. -->
+<resources>
+    <string name="app_name">ZX1 Retro Interface</string>
+    <string name="zx1_mark">ZX•1</string>
+    <string name="digital_audio_player">DIGITAL AUDIO PLAYER</string>
+    <string name="interface_edition">PORTABLE AUDIO SYSTEM / 2014</string>
+    <string name="action_unavailable">This function is not available on this device.</string>
+    <string name="queued_next">Added to the now playing queue.</string>
+    <string name="playlist_added">Added to the playlist.</string>
+    <string name="playlist_removed">Removed from the playlist.</string>
+    <string name="playlist_deleted">Playlist deleted.</string>
+    <string name="playlist_name_needed">Give the playlist a name.</string>
+    <string name="playlist_name_taken">That name is already in use.</string>
+    <string name="playlist_playing_now">That playlist is playing right now.</string>
+    <string name="track_unmatched">This track has no unique match in the media database.</string>
+</resources>

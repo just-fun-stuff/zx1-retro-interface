@@ -1,0 +1,12 @@
+# TODO
+
+## Current Task — on-device verification pass
+
+- [ ] **Playlists screen** (`adb logcat -s ZX1Playlists ZX1Queue ZX1Handoff`): create a list, fill it from the library's ADD TO PLAYLIST, tap a middle row — it plays from there on the firmware engine with no UI switch and hardware skip walks the list. REMOVE FROM LIST while the list is playing answers the one open device question — **record in firmware-findings.md** whether the engine integrates a live single-row delete or the launcher has to reopen the list. Delete-guard: deleting the playing list is refused. Rename never touches playback. Sony's lists stay read-only, play via the mirror, and are unchanged in Sony's own app afterwards. Stacked ADD TO NOW PLAYING stays hitchless after the first reopen (`in-place insert integrated`). Cold boot: a playlist tap before Sony's app has a player falls back to the single-track handoff. A member whose row no longer reads shows dark (`TRACK UNAVAILABLE`) and refuses to play.
+- [ ] **Spectrum decoders** (`adb logcat -s ZX1Spectrum`): ALAC and >48 kHz FLAC tracks analyze on first play (`finish … hand-written alac/flac`) and animate on every later one; on 192 kHz first listens the bars honestly trail the playhead; PAUSE/STOP hold the flat baseline; broken files log `baseline holds` once and never animate. CLOCK is a real off-switch: silence under CLOCK, a running pass yields mid-analysis, SPECTRUM re-request resumes from the stored frame. After `finish`, `dumpsys activity services io.github.justfunstuff.zx1retro` lists no services; idle battery draw unchanged.
+- [ ] **Background library refresh** (`adb logcat -s ZX1Library`): USB add/remove and a reboot each end in a rebuilt cache with no UPDATING LIBRARY overlay on the next browser open; a no-change disconnect ends `cache already fresh`. **Record in firmware-findings.md** which storage broadcasts firmware 1.13 actually delivers and how long its scan keeps the provider empty.
+
+## Next Steps
+
+- [ ] **Shuffle-all** (stretch): `setShuffleMode` is txn 18 (decompile-verified) — build it only if it proves a clean call on the device; if it needs player re-opening or heavy state juggling, leave it out.
+- [ ] Unscheduled follow-ons: repeat/shuffle annunciators (PlayInfo slots 15/16), active-EQ name (`getAudioOutputEffect` txn 33), synced lyrics (Genie `synclyric`), WM-PORT dock detection for the footer, event-driven now-playing via `addListener` instead of the poll, a period-correct launcher icon.

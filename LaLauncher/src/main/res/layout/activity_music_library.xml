@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MUSIC LIBRARY browser (C1): the program index's mechanism applied to
+     the Genie library - shallow metadata lists on the glass. The overlay
+     covers a full rebuild with a real progress bar; cached opens never
+     show it. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/lib_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/chassis_black">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp">
+
+            <TextView
+                android:id="@+id/lib_back"
+                style="@style/DrawerControl"
+                android:layout_width="72dp"
+                android:text="▼ HOME" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/lib_title_label"
+                    style="@style/PanelMicroLabel"
+                    android:text="MUSIC LIBRARY" />
+                <TextView
+                    android:id="@+id/lib_status"
+                    style="@style/PanelMicroLabel"
+                    android:layout_width="match_parent"
+                    android:singleLine="true"
+                    android:text="READING LIBRARY..."
+                    android:textColor="@color/panel_dim" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/lib_glass"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/lcd_frame"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <EditText
+                android:id="@+id/lib_search"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/lcd_search"
+                android:fontFamily="monospace"
+                android:hint="SEARCH SONGS..."
+                android:inputType="text"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:singleLine="true"
+                android:textColor="@color/lcd_ink"
+                android:textColorHint="@color/lcd_ink_dim"
+                android:textSize="17sp"
+                android:visibility="gone" />
+
+            <ListView
+                android:id="@+id/lib_list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:cacheColorHint="@color/lcd_surface"
+                android:divider="@color/lcd_ink_dim"
+                android:dividerHeight="1dp"
+                android:listSelector="@drawable/lcd_row_selected"
+                android:scrollbarStyle="outsideOverlay" />
+
+            <TextView
+                android:id="@+id/lib_hint"
+                style="@style/LcdSmall"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:gravity="center_vertical"
+                android:text="TAP: OPEN    ▼: BACK" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Full-rebuild overlay: opaque chassis with an LCD readout panel,
+         like a deck reporting a disc scan. Eats touches while visible. -->
+    <LinearLayout
+        android:id="@+id/lib_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/chassis_black"
+        android:clickable="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/lib_overlay_panel"
+            android:layout_width="264dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/lcd_frame"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:id="@+id/lib_overlay_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="READING LIBRARY"
+                android:textColor="@color/lcd_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/lib_overlay_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="16dp"
+                android:layout_marginTop="12dp"
+                android:progressDrawable="@drawable/lcd_progress" />
+
+            <TextView
+                android:id="@+id/lib_overlay_count"
+                style="@style/LcdSmall"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/lcd_ink_dim" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Long-press task menu: the same overlay idiom - opaque chassis,
+         one LCD panel - offering numbered functions for one track.
+         Scrim tap and back both cancel. -->
+    <FrameLayout
+        android:id="@+id/lib_menu"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/chassis_black"
+        android:clickable="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/lib_menu_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginLeft="24dp"
+            android:layout_marginRight="24dp"
+            android:background="@drawable/lcd_frame"
+            android:clickable="true"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:id="@+id/lib_menu_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:textColor="@color/lcd_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/lib_menu_sub"
+                style="@style/LcdSmall"
+                android:layout_width="match_parent"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:textColor="@color/lcd_ink_dim" />
+
+            <TextView
+                android:id="@+id/lib_menu_queue"
+                style="@style/LcdSoftKey"
+                android:layout_marginTop="12dp"
+                android:text="1  ADD TO NOW PLAYING" />
+
+            <TextView
+                android:id="@+id/lib_menu_playlist"
+                style="@style/LcdSoftKey"
+                android:layout_marginTop="4dp"
+                android:text="2  ADD TO PLAYLIST" />
+
+            <TextView
+                android:id="@+id/lib_menu_hint"
+                style="@style/LcdSmall"
+                android:layout_width="match_parent"
+                android:layout_marginTop="10dp"
+                android:text="TAP: SELECT    ▼: CANCEL" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

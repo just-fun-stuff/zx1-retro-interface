@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Restrained graphite, amber, and STN-LCD palette. -->
+<resources>
+    <color name="chassis_black">#0C0F0E</color>
+    <color name="chassis_mid">#181D1B</color>
+    <color name="chassis_edge">#3B423E</color>
+    <color name="panel_white">#E4E6E1</color>
+    <color name="panel_dim">#858C87</color>
+    <color name="accent_orange">#D86A35</color>
+    <color name="lcd_surface">#AAB49D</color>
+    <color name="lcd_surface_pressed">#C4CDB9</color>
+    <color name="lcd_ink">#17231C</color>
+    <color name="lcd_ink_dim">#4A584D</color>
+    <color name="lcd_search_field">#9AA58F</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- TUBE AMP style (Settings > Style): pure black body and glass, amber
+         glow for every printed and lit element. Applied at runtime by Skin -
+         API 16 cannot re-theme drawables, so the LCD resources above stay
+         the inflate-time default. -->
+    <color name="tube_black">#000000</color>
+    <color name="tube_chassis_mid">#1C1207</color>
+    <color name="tube_chassis_edge">#523717</color>
+    <color name="tube_glow">#F5A73B</color>
+    <color name="tube_glow_dim">#A06A22</color>
+    <color name="tube_glow_bright">#FFC873</color>
+    <color name="tube_glow_press">#3A2708</color>
+    <color name="tube_field">#120B03</color>
+</resources>

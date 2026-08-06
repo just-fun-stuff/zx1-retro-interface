@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Minimal-chassis home: hardware keys own transport/volume, so the fascia
+     keeps only the brand row, the LCD, and the spec footer (design "d",
+     2026-07-19). The chassis has no side bands - the glass runs edge to
+     edge; only the brand row and footer keep their own print inset. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/home_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/chassis_black"
+    android:orientation="vertical"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp">
+
+        <TextView
+            android:id="@+id/brand_mark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-condensed"
+            android:text="@string/zx1_mark"
+            android:textColor="@color/panel_white"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/brand_line1"
+                style="@style/PanelMicroLabel"
+                android:text="@string/digital_audio_player" />
+
+            <TextView
+                android:id="@+id/brand_line2"
+                style="@style/PanelMicroLabel"
+                android:text="@string/interface_edition"
+                android:textColor="@color/panel_dim" />
+        </LinearLayout>
+
+        <!-- The chassis info window (Settings > Info Screen).
+             SPECTRUM (B7b): the eight bars replay the current track's
+             stored offline analysis at the playhead - live capture is
+             impossible on this hardware (the S-Master path gives the
+             Visualizer nothing; firmware-findings.md), so SpectrumController
+             indexes the SpectrumStore envelope by the player's own clock,
+             only while PLAY and resumed. Any position analysis has not
+             reached - and every track without an envelope (ALAC and hi-rate
+             FLAC wait for phase 2) - holds this designed flat baseline; the
+             window is never animated with fake data. Bars are plain Views
+             resized via LayoutParams, nothing custom-drawn.
+             CLOCK: the same rectangle re-cut in the screen colors, showing
+             the real time (same 24-h readout the LCD status row keeps). -->
+        <FrameLayout
+            android:id="@+id/info_window"
+            android:layout_width="36dp"
+            android:layout_height="24dp"
+            android:background="@drawable/spectrum_window">
+
+            <LinearLayout
+                android:id="@+id/spectrum_bars"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_horizontal|bottom"
+                android:orientation="horizontal"
+                android:paddingBottom="2dp">
+
+                <View style="@style/SpectrumBar" android:layout_marginLeft="0dp" />
+                <View style="@style/SpectrumBar" />
+                <View style="@style/SpectrumBar" />
+                <View style="@style/SpectrumBar" />
+                <View style="@style/SpectrumBar" />
+                <View style="@style/SpectrumBar" />
+                <View style="@style/SpectrumBar" />
+                <View style="@style/SpectrumBar" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/window_clock"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fontFamily="monospace"
+                android:gravity="center"
+                android:textColor="@color/lcd_ink"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/lcd_zone"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_weight="1"
+        android:background="@drawable/lcd_frame"
+        android:minHeight="238dp"
+        android:orientation="vertical"
+        android:paddingLeft="10dp"
+        android:paddingTop="9dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/lcd_state"
+                style="@style/LcdSmall"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="STOP" />
+
+            <TextView
+                android:id="@+id/lcd_battery"
+                style="@style/LcdSmall"
+                android:text="BATT --%" />
+
+            <TextView
+                android:id="@+id/lcd_clock"
+                style="@style/LcdSmall"
+                android:layout_marginLeft="9dp"
+                android:text="00:00" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/lcd_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="7dp"
+            android:background="@color/lcd_ink_dim" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Title line: a long title scrolls back and forth across the
+                 glass (period MiniDisc-deck behaviour), never an ellipsis;
+                 static when it fits. It pans only while the screen is on. -->
+            <com.github.postapczuk.lalauncher.ScrollingLcdText
+                android:id="@+id/lcd_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:text="DIGITAL AUDIO"
+                android:textColor="@color/lcd_ink"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+
+            <!-- PLAY/STOP are the proven font glyphs; PAUSE is drawn as two
+                 solid rectangles by the view itself (no 4.1 font gamble). -->
+            <com.github.postapczuk.lalauncher.TransportGlyphView
+                android:id="@+id/lcd_glyph"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:fontFamily="monospace"
+                android:text="■"
+                android:textColor="@color/lcd_ink"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Artist segment: a fixed line like a hardware annunciator - it
+             reserves its space and lights up only when the player has
+             announced real metadata. -->
+        <TextView
+            android:id="@+id/lcd_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:singleLine="true"
+            android:textColor="@color/lcd_ink_dim"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="invisible" />
+
+        <!-- Quality segment (B2) with the year and the inverted HR chip at
+             fixed annunciator positions; every element lights only when its
+             datum was actually read from the firmware. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/lcd_quality"
+                style="@style/LcdSmall"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:visibility="invisible" />
+
+            <TextView
+                android:id="@+id/lcd_year"
+                style="@style/LcdSmall"
+                android:layout_marginLeft="8dp"
+                android:textColor="@color/lcd_ink_dim"
+                android:visibility="invisible" />
+
+            <TextView
+                android:id="@+id/lcd_hr"
+                style="@style/LcdSmall"
+                android:layout_marginLeft="8dp"
+                android:background="@color/lcd_ink"
+                android:paddingLeft="4dp"
+                android:paddingTop="1dp"
+                android:paddingRight="4dp"
+                android:paddingBottom="1dp"
+                android:text="HR"
+                android:textColor="@color/lcd_surface"
+                android:visibility="invisible" />
+        </LinearLayout>
+
+        <!-- Time segment (B4): elapsed / total and TR x/y from the player's
+             own counters; frozen on the glass when playback stops. -->
+        <TextView
+            android:id="@+id/lcd_time"
+            style="@style/LcdSmall"
+            android:layout_width="match_parent"
+            android:layout_marginTop="3dp"
+            android:singleLine="true"
+            android:visibility="invisible" />
+
+        <!-- Art panel: the current track's dithered cover - four STN grey
+             tones - whenever its art is actually readable (B6); the
+             two-tone dithered plasma otherwise.
+             The panel is the flexible element - it absorbs whatever height
+             the app window really has (the firmware keeps Android's nav
+             bar: 480x782, not 480x854), so the soft-keys and latch below
+             can never be pushed off the glass. -->
+        <ImageView
+            android:id="@+id/lcd_panel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/lcd_panel_frame"
+            android:contentDescription="@null"
+            android:padding="1dp"
+            android:scaleType="fitXY" />
+
+        <TextView
+            android:id="@+id/action_library"
+            style="@style/LcdSoftKey"
+            android:layout_marginTop="8dp"
+            android:text="MUSIC LIBRARY" />
+
+        <TextView
+            android:id="@+id/action_playlists"
+            style="@style/LcdSoftKey"
+            android:layout_marginTop="4dp"
+            android:text="PLAYLISTS" />
+
+        <TextView
+            android:id="@+id/action_apps"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/lcd_latch"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:text="PROGRAM INDEX   ▲"
+            android:textColor="@color/lcd_latch_text"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:layout_marginTop="7dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp">
+
+        <TextView
+            android:id="@+id/footer_left"
+            style="@style/PanelMicroLabel"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="NW–ZX1 / DIGITAL AUDIO"
+            android:textColor="@color/panel_dim" />
+
+        <TextView
+            android:id="@+id/footer_output"
+            style="@style/PanelMicroLabel"
+            android:text="SPEAKER  •  24 BIT"
+            android:textColor="@color/accent_orange" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SETTINGS: three numbered function rows on the glass; a tap cycles the
+     value the way a deck's MENU/ENTER key stepped through options. Reached
+     from the program index's gear; the header goes up exactly one level. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/settings_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/chassis_black"
+    android:orientation="vertical"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp">
+
+        <TextView
+            android:id="@+id/settings_back"
+            style="@style/DrawerControl"
+            android:layout_width="72dp"
+            android:text="▼ INDEX" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/settings_title"
+                style="@style/PanelMicroLabel"
+                android:text="SETTINGS" />
+            <TextView
+                android:id="@+id/settings_subtitle"
+                style="@style/PanelMicroLabel"
+                android:text="SYSTEM MENU"
+                android:textColor="@color/panel_dim" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/settings_glass"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/lcd_frame"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:id="@+id/setting_style"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:background="@drawable/lcd_row_selected"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp">
+
+            <TextView
+                android:layout_width="42dp"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="1"
+                android:textColor="@color/lcd_ink_dim"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="monospace"
+                android:text="STYLE"
+                android:textColor="@color/lcd_ink"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/setting_style_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/lcd_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/lcd_ink_dim" />
+
+        <LinearLayout
+            android:id="@+id/setting_artwork"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:background="@drawable/lcd_row_selected"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp">
+
+            <TextView
+                android:layout_width="42dp"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="2"
+                android:textColor="@color/lcd_ink_dim"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="monospace"
+                android:text="ARTWORK STYLE"
+                android:textColor="@color/lcd_ink"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/setting_artwork_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/lcd_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/lcd_ink_dim" />
+
+        <LinearLayout
+            android:id="@+id/setting_info"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:background="@drawable/lcd_row_selected"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp">
+
+            <TextView
+                android:layout_width="42dp"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="3"
+                android:textColor="@color/lcd_ink_dim"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="monospace"
+                android:text="INFO SCREEN"
+                android:textColor="@color/lcd_ink"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/setting_info_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/lcd_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/lcd_ink_dim" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/settings_hint"
+            style="@style/LcdSmall"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:gravity="center_vertical"
+            android:text="TAP: CHANGE    ▼: BACK" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="782" viewBox="0 0 480 782">
+  <!-- Visual reference for the ZX1 digital-audio interface (minimal chassis,
+       now-playing data layer, edge-to-edge glass, flexed art panel). The
+       canvas is 480x782: the real app window on the device - the firmware
+       keeps Android's nav bar below. Regenerate the PNG with headless
+       Chrome using the flags headless, screenshot=docs/home-preview.png,
+       and window-size=480,782 (each prefixed with two dashes, which XML
+       comments cannot contain), passing this SVG's path as the argument.
+       Specimen data follows the app's exact formatting rules: quality line
+       per docs/firmware-findings.md, the canonical FLAC 96/24 example. -->
+  <defs>
+    <filter id="inset" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000" flood-opacity="0.85"/>
+    </filter>
+    <pattern id="d25" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#aab49d"/><rect width="3" height="3" fill="#17231c"/>
+    </pattern>
+    <pattern id="d50" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#aab49d"/><rect width="3" height="3" fill="#17231c"/><rect x="3" y="3" width="3" height="3" fill="#17231c"/>
+    </pattern>
+    <pattern id="d75" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#17231c"/><rect x="3" width="3" height="3" fill="#aab49d"/>
+    </pattern>
+    <clipPath id="panelClip"><rect x="1" y="143" width="448" height="316"/></clipPath>
+  </defs>
+
+  <rect width="480" height="782" fill="#0c0f0e"/>
+
+  <text x="14" y="44" fill="#e4e6e1" font-family="Arial Narrow, sans-serif" font-weight="700" font-size="29">ZX•1</text>
+  <text x="93" y="30" fill="#e4e6e1" font-family="Arial Narrow, sans-serif" font-weight="700" font-size="10">DIGITAL AUDIO PLAYER</text>
+  <text x="93" y="46" fill="#858c87" font-family="Arial Narrow, sans-serif" font-weight="700" font-size="9">PORTABLE AUDIO SYSTEM / 2014</text>
+
+  <rect x="426" y="22" width="40" height="24" rx="1" fill="#17231c" stroke="#3b423e"/>
+  <g fill="#aab49d">
+    <rect x="430" y="40" width="3" height="3"/><rect x="434.5" y="40" width="3" height="3"/>
+    <rect x="439" y="40" width="3" height="3"/><rect x="443.5" y="40" width="3" height="3"/>
+    <rect x="448" y="40" width="3" height="3"/><rect x="452.5" y="40" width="3" height="3"/>
+    <rect x="457" y="40" width="3" height="3"/><rect x="461.5" y="40" width="3" height="3"/>
+  </g>
+
+  <!-- Bezel bands on top and bottom only; the glass runs edge to edge. -->
+  <rect x="-6" y="65" width="492" height="670" fill="#3b423e" filter="url(#inset)"/>
+  <rect x="-2" y="69" width="484" height="662" fill="#aab49d" stroke="#050706"/>
+
+  <g transform="translate(15 87)" font-family="Courier New, monospace" font-weight="700">
+    <text x="0" y="10" fill="#17231c" font-size="11">PLAY</text>
+    <text x="322" y="10" fill="#17231c" font-size="11">BATT 78%</text>
+    <text x="417" y="10" fill="#17231c" font-size="11">14:42</text>
+    <path d="M0 22H450" stroke="#4a584d" stroke-width="1"/>
+
+    <text x="0" y="63" fill="#17231c" font-size="27">NOCTURNE OP.9 NO.2</text>
+    <text x="450" y="63" text-anchor="end" fill="#17231c" font-size="27">▶</text>
+    <text x="0" y="85" fill="#4a584d" font-size="16">ARTUR RUBINSTEIN</text>
+    <text x="0" y="105" fill="#17231c" font-size="15">FLAC 96/24  2304KBPS  2CH</text>
+    <text x="408" y="105" text-anchor="end" fill="#4a584d" font-size="15">1965</text>
+    <rect x="416" y="91" width="34" height="18" fill="#17231c"/>
+    <text x="433" y="105" text-anchor="middle" fill="#aab49d" font-size="15">HR</text>
+    <text x="0" y="125" fill="#17231c" font-size="15">2:41 / 4:33 · TR 3/12</text>
+
+    <g clip-path="url(#panelClip)">
+      <rect x="1" y="143" width="448" height="316" fill="url(#d25)"/>
+      <ellipse cx="260" cy="280" rx="200" ry="150" fill="url(#d50)"/>
+      <ellipse cx="130" cy="390" rx="130" ry="110" fill="url(#d75)"/>
+      <ellipse cx="300" cy="230" rx="80" ry="60" fill="#17231c"/>
+    </g>
+    <rect x="0.5" y="142.5" width="449" height="317" fill="none" stroke="#17231c"/>
+
+    <g transform="translate(0 472)">
+      <rect x="0.5" y="0.5" width="449" height="53" rx="1.5" fill="none" stroke="#4a584d"/>
+      <text x="12" y="33" fill="#17231c" font-size="14">MUSIC LIBRARY</text>
+    </g>
+    <g transform="translate(0 531)">
+      <rect x="0.5" y="0.5" width="449" height="53" rx="1.5" fill="none" stroke="#4a584d"/>
+      <text x="12" y="33" fill="#17231c" font-size="14">PLAYLISTS</text>
+    </g>
+
+    <text x="225" y="620" text-anchor="middle" fill="#4a584d" font-size="11">PROGRAM INDEX   ▲</text>
+  </g>
+
+  <text x="14" y="758" fill="#858c87" font-family="Arial Narrow, sans-serif" font-weight="700" font-size="9">NW–ZX1 / DIGITAL AUDIO</text>
+  <text x="466" y="758" text-anchor="end" fill="#d86a35" font-family="Arial Narrow, sans-serif" font-weight="700" font-size="9">HEADPHONES  •  24 BIT</text>
+</svg>

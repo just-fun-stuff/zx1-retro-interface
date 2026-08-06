@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+
+# Editor debris (vim, emacs, generic backups)
+*~
+*.swp
+*.swo
+.*.sw?
+\#*\#
+.\#*
+
+# Build output
+build/
+.gradle/
+dist/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+captures/
+*.log
+
+# IDE / editors
+.idea/
+*.iml
+.navigation/
+.vscode/
+.obsidian/
+
+# Machine-local configuration — never committed
+local.properties
+
+# Signing material — never committed
+*.jks
+*.keystore
+keystore.properties
+
+# AI-assistant local state
+.claude/
+
+# Service configs (unused; guard anyway)
+google-services.json

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LCD progress bar: glass track with an ink border, ink fill. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape>
+            <solid android:color="@color/lcd_surface" />
+            <stroke android:width="1px" android:color="@color/lcd_ink" />
+        </shape>
+    </item>
+    <item
+        android:id="@android:id/progress"
+        android:bottom="3dp"
+        android:left="3dp"
+        android:right="3dp"
+        android:top="3dp">
+        <clip>
+            <shape>
+                <solid android:color="@color/lcd_ink" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modified 2026-07-17: renamed and constrained for the NW-ZX1 shell.
+     Modified 2026-07-20: background library refresh receiver + service. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.github.postapczuk.lalauncher">
+
+    <!-- All install-time. BOOT_COMPLETED: refresh the library cache after
+         power-on, when Sony's indexer rescans. READ_EXTERNAL_STORAGE: the
+         music files - the firmware player's engine appears to open a
+         queue's media under the submitting client's credentials
+         (binder-queue play tasks died with Error_Unknown while the same
+         file played from Sony's own process; findings "The open() wedge"
+         thread). WRITE_EXTERNAL_STORAGE: the launcher's own "ZX1 NOW
+         PLAYING" queue lives in the platform playlists table (the one
+         store whose members uri is an engine-accepted, path-readable
+         queue descriptor - NowPlayingQueue). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application
+        android:allowBackup="true"
+        android:clearTaskOnLaunch="true"
+        android:excludeFromRecents="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:stateNotNeeded="true"
+        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+
+        <activity
+            android:name=".FavouriteAppsActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.HOME" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".InstalledAppsActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".MusicLibraryActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Standard launch mode deliberately: the library starts this
+             screen a second time as the ADD TO PLAYLIST picker, and a
+             singleTask instance would keep its browsing state instead. -->
+        <activity
+            android:name=".PlaylistsActivity"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Storage/scan events start a short-lived cache refresh, so the
+             browser opens on current data. Exported-default deliberately:
+             MEDIA_SCANNER_FINISHED arrives from the media provider's uid,
+             which a non-exported receiver would refuse on this firmware. -->
+        <receiver android:name=".LibraryRefreshReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_SCANNER_FINISHED" />
+                <action android:name="android.intent.action.MEDIA_MOUNTED" />
+                <action android:name="android.intent.action.MEDIA_EJECT" />
+                <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
+                <data android:scheme="file" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".LibraryRefreshService" />
+
+        <!-- Offline spectrum analyzer (B7b): started by home's poll when
+             the playing track lacks an envelope; one decode pass at lowest
+             priority, then stops itself. -->
+        <service android:name=".SpectrumAnalyzerService" />
+    </application>
+</manifest>

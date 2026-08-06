@@ -1,0 +1,58 @@
+// Modified 2026-07-17: dependency-free API 16 launcher build.
+apply plugin: 'com.android.application'
+
+// Release signing is read from an untracked keystore.properties in the repo
+// root (storeFile/storePassword/keyAlias/keyPassword). Without it, release
+// builds are simply unsigned - the file and the keystore stay out of git.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion '30.0.3'
+
+    defaultConfig {
+        applicationId 'io.github.justfunstuff.zx1retro'
+        minSdkVersion 16
+        targetSdkVersion 28
+        versionCode 1
+        versionName '0.1'
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // No minification: APK size is not a constraint here, and a code
+            // shrinker that can only be validated on the physical ZX1 is a
+            // release-only failure mode this project does not need.
+            minifyEnabled false
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    lintOptions {
+        abortOnError true
+        // This is a sideload-only launcher for Android 4.1, not a Play app.
+        disable 'MissingTranslation', 'ExpiredTargetSdkVersion'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+}

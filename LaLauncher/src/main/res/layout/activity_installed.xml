@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Compact late-1990s program index. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/program_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/chassis_black"
+    android:orientation="vertical"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp">
+
+        <TextView
+            android:id="@+id/action_home"
+            style="@style/DrawerControl"
+            android:layout_width="72dp"
+            android:text="▼ HOME" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/program_title"
+                style="@style/PanelMicroLabel"
+                android:text="PROGRAM INDEX" />
+            <TextView
+                android:id="@+id/program_count"
+                style="@style/PanelMicroLabel"
+                android:text="00 PROGRAMS"
+                android:textColor="@color/panel_dim" />
+        </LinearLayout>
+
+        <!-- The settings gear: the interface's one sanctioned icon (drawn,
+             never a font glyph - U+2699 is unreliable on this firmware). -->
+        <com.github.postapczuk.lalauncher.GearView
+            android:id="@+id/action_settings"
+            android:layout_width="44dp"
+            android:layout_height="34dp"
+            android:layout_marginLeft="8dp"
+            android:background="@drawable/drawer_control"
+            android:clickable="true"
+            android:contentDescription="SETTINGS"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/program_glass"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/lcd_frame"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <EditText
+            android:id="@+id/search_filter"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@drawable/lcd_search"
+            android:fontFamily="monospace"
+            android:hint="SEARCH PROGRAM..."
+            android:inputType="text"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:singleLine="true"
+            android:textColor="@color/lcd_ink"
+            android:textColorHint="@color/lcd_ink_dim"
+            android:textSize="17sp" />
+
+        <ListView
+            android:id="@+id/app_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:cacheColorHint="@color/lcd_surface"
+            android:divider="@color/lcd_ink_dim"
+            android:dividerHeight="1dp"
+            android:listSelector="@drawable/lcd_row_selected"
+            android:scrollbarStyle="outsideOverlay" />
+
+        <TextView
+            android:id="@+id/program_hint"
+            style="@style/LcdSmall"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:gravity="center_vertical"
+            android:text="TAP: OPEN    HOLD: APP INFO" />
+    </LinearLayout>
+</LinearLayout>
