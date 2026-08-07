@@ -821,6 +821,52 @@ Corollary for debugging: **a screen-off device produces the same picture**
 last drawn frame. Check `dumpsys window | grep mScreenOnFully` before
 concluding anything from a screenshot.
 
+## `setBackground` takes the view's padding with it (API 16)
+
+Device-verified 2026-08-06 on firmware 1.13. `View.setBackgroundDrawable`
+adopts the new background's padding as the view's own:
+
+```java
+if (background.getPadding(padding)) {
+    setPadding(padding.left, padding.top, padding.right, padding.bottom);
+}
+```
+
+and **`LayerDrawable.getPadding` returns `true` unconditionally**, whatever
+its layers actually hold — the method sums the children's padding, then
+returns `true` regardless of the total. Layer *insets* are not padding, so
+`lcd_frame` (whose whole bezel is built from insets) reports a padding of
+zero and is believed.
+
+Nothing goes wrong at inflate time, which is why the LCD style never showed
+it: `View(Context, AttributeSet)` sets the background first and applies the
+`android:padding*` attributes afterwards, so the attribute wins. TUBE AMP
+arrives later — `applySkin()` calls `setBackground(skin.frameBackground())`
+on an already-inflated view — with nothing behind it to restore the inset
+the layout asked for.
+
+Measured on the home glass, `lcd_zone`'s `10/9/10/8dp` going to zero
+(hdpi, density 1.5):
+
+| element | LCD | TUBE (bug) | TUBE (fixed) |
+|---|---|---|---|
+| art panel top / bottom | y 285 / 557 | y 271 / 569 | y 285 / 557 |
+| art panel left border | x 15 | flush to 0 | x 15 |
+| status row ink | x 16–463 | x 0–479 | x 16–462 |
+
+The art panel absorbs the freed vertical space because it is the weighted
+element, so the visible symptom is a *bigger cover* with the status row and
+soft-keys pushed out of alignment — which reads as an artwork-sizing bug
+rather than a padding one. Every frame-backed panel on the other four
+screens carries the same 10–18dp inset and lost it identically.
+
+**Fix:** `Skin.Frame`, a `LayerDrawable` subclass whose `getPadding` returns
+false, so padding stays where both styles agree it belongs — the layout.
+Any future runtime `setBackground` of a multi-layer drawable needs the same
+care; single-shape backgrounds are safe (`GradientDrawable.getPadding`
+returns false without a `<padding>` tag, and `DrawableContainer` returns
+`(l|t|r|b) != 0`, i.e. false for all-zero children).
+
 ## Misc verified facts
 
 - wm2 activity table exports `ACTION_START_TOP`, `ACTION_START_DASHBOARD`,

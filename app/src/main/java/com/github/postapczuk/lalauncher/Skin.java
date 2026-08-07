@@ -153,10 +153,44 @@ final class Skin {
         GradientDrawable glassPane = new GradientDrawable();
         glassPane.setColor(glass);
         glassPane.setStroke(dp(1), 0xFF050706);
-        LayerDrawable frame = new LayerDrawable(new Drawable[]{bezel, glassPane});
+        LayerDrawable frame = new Frame(new Drawable[]{bezel, glassPane});
         frame.setLayerInset(0, -dp(4), 0, -dp(4), 0);
         frame.setLayerInset(1, -dp(1), dp(3), -dp(1), dp(3));
         return frame;
+    }
+
+    /**
+     * The frame, declining to dictate padding.
+     *
+     * <p>{@code View.setBackgroundDrawable} adopts a background's padding as
+     * the view's own - {@code if (background.getPadding(rect))
+     * setPadding(...)} - and {@link LayerDrawable#getPadding} answers
+     * <em>true</em> unconditionally, whatever the layers actually hold. Ours
+     * hold nothing: {@code lcd_frame}'s bezel is built from layer
+     * <em>insets</em>, which are not padding, so the frame reports a padding
+     * of zero and means it. Inflating the LCD style never notices, because
+     * {@code View(Context, AttributeSet)} applies the {@code android:padding}
+     * attributes after the background and so overwrites that zero - but TUBE
+     * AMP arrives later, from {@code applySkin()}, with nothing behind it to
+     * restore the glass inset the layout asked for. The whole screen then
+     * sits flush against the bezel: the status row and soft-keys lose their
+     * margins and the art panel swells into the space (device-verified on
+     * the home glass, and every frame-backed panel on the other four screens
+     * carries the same 10-18dp inset).
+     *
+     * <p>Returning false leaves the view's padding to the layout, which is
+     * where both styles agree it belongs.
+     */
+    private static final class Frame extends LayerDrawable {
+        Frame(Drawable[] layers) {
+            super(layers);
+        }
+
+        @Override
+        public boolean getPadding(android.graphics.Rect padding) {
+            padding.set(0, 0, 0, 0);
+            return false;
+        }
     }
 
     /** res/drawable/lcd_soft_key.xml: stroked key, ink-solid when pressed. */
