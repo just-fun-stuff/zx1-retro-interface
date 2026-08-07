@@ -31,6 +31,8 @@ I think ZX1 works better as a music player than as a small phone/android handhel
 
 And some things aren't done yet:
 
+- You can't access Notifications. 
+- It will probably crash.
 - Repeat and shuffle can't be seen or set from the launcher yet. A shuffle control is on the list.
 - Sony's own playlists are read-only; the firmware's database doesn't accept writes from other apps.
 - Queue editing stops at append and remove — no reordering.
@@ -42,13 +44,16 @@ And some things aren't done yet:
 
 ## Install
 
+**This is an early version so expect bugs. If you are ok with this, give it a try.**
+
 Download the APK from the **Releases** page and sideload it over USB:
 
 ```sh
 adb install -r zx1-retro-interface-<version>.apk
 ```
 
-Press HOME on the ZX1 and choose **ZX1 Retro Interface**. Don't select "always" until you've confirmed it works on your firmware.
+Press HOME on the ZX1 and choose **ZX1 Retro Interface**. 
+**Don't select "always" for now because I promise you there are bugs!**
 
 ## Build
 
@@ -60,22 +65,15 @@ You need:
 - An Android SDK with **platform 30** and **build-tools 30.0.3**
 - The SDK path in `local.properties` (`sdk.dir=...`) or an `ANDROID_HOME` environment variable
 
-Lint runs with `abortOnError` enabled, so this one command is also the project's check gate:
-
 ```sh
 ./gradlew lintDebug assembleDebug
 ```
 
-The APK lands at `LaLauncher/build/outputs/apk/debug/LaLauncher-debug.apk`; install it the same way as above.
+The APK ends up at `LaLauncher/build/outputs/apk/debug/LaLauncher-debug.apk`; install it the same way as above.
 
-## How it talks to the firmware
+## How it works
 
-Everything device-specific came from the ZX1's own firmware (version 1.13) and is written up in [docs/firmware-findings.md](docs/firmware-findings.md): the player's binder protocol, the media database's quirks, and the measurements behind the spectrum pipeline.
-
-The launcher performs the same client handshake with the player's media service that Sony's own app performs, and only issues transaction codes recovered from the firmware's client library. Queues are submitted over Android's media database because Sony's database withholds file paths from third-party apps, so queues addressed to it fail at playback. The player then reports its own track ids, and the launcher maps them back to Sony's database so the display works the same no matter whose queue is playing.
-
-Off the ZX1, Sony-specific actions fall back to standard Android intents or report "NOT AVAILABLE".
-
+Everything I learned about how things work on the ZX1 is written up in [docs/firmware-findings.md](docs/firmware-findings.md).
 ## License
 
 Derived from [Light Android Launcher](https://github.com/light-launcher/Light-Android-Launcher) and distributed under the same license, the **GNU General Public License v2.0** — see [LICENSE](LICENSE). The interface and launcher behavior were substantially rewritten for the NW-ZX1; [NOTICE](NOTICE) summarizes the changes.
