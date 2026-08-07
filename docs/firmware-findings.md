@@ -219,10 +219,12 @@ for an album is track order).
 
 **Queue URIs without selections:** album = `albums/<id>/media`; all
 songs = `external/audio/media` (ORDER BY `title_sortstr`); playlist =
-`playlists/<id>/media` in provider order. To keep the tapped row's
-position valid as the queue start index, display lists sort locally with
-SQLite BINARY collation (unsigned UTF-8 bytes, NULL first, rowid-order
-ties) on exactly the ORDER BY column.
+`playlists/<id>/media` in provider order. Display lists sort locally
+with SQLite BINARY collation (unsigned UTF-8 bytes, NULL first,
+rowid-order ties) on exactly the ORDER BY column, so a level reads in
+its provider's own order. That local order is *not* a queue index: what
+the launcher opens is a platform query, and the start index is counted
+there (albums and songs alike — see "Album queues" below).
 
 **Exported intent entry (fallback tier), proven working on device:**
 wm2's `ScanAndPlayFileActivity` is an exported `ACTION_VIEW` handler for
@@ -358,7 +360,8 @@ never submitted** — each one costs a dead list.
 
 **CONFIRMED WORKING (proven live):** platform-MediaStore descriptors
 play from the launcher's registered client — album queues
-(`selection=album_id=N`, `ORDER BY track`, tapped index cued) and
+(`selection=album_id=N`, `ORDER BY track`, the tapped track's index
+counted against that query) and
 one-track appended-id lists both reach PLAY with no UI switch, and
 playback survives leaving the launcher. Measured consequence: **the
 player then reports platform ids** in PlayInfo.trackId, so the
@@ -380,12 +383,39 @@ express a stored list is the **platform playlists table**:
 `…/audio/playlists/<id>/members` orders by the single column
 `play_order` (see below).
 
-Open questions: whether platform-album display order (Genie trackNo,
-Genie-id ties) ever diverges from the player's `ORDER BY track`
-(platform-rowid ties) on tie-heavy or multi-disc albums — the
-cued-vs-requested verification line names any mismatch; whether the
-stock app reasserts its persisted list on a cold start after our
-open().
+**Album queues: the displayed album is not the queue (MEASURED
+2026-08-06, answering the old open question — it diverges, and by a
+lot).** The two providers bucket albums differently:
+
+- The **platform** scanner keeps a multi-disc set whole under one
+  `album_id` and folds the disc into the track number as
+  `disc*1000+track`, so `ORDER BY track` runs the set disc-major.
+- **Genie** buckets by the album-name *string* and stores the bare tag
+  track number. Discs whose tags spell the album name identically
+  collapse into one Genie album; a disc whose tag carries a stray
+  trailing space becomes a separate one.
+
+Measured case — SPITZ, *CYCLE HIT 1991-2017* (3 discs, 45 tracks):
+platform `album_id=189` holds all 45 rows, numbered 1001–3015. Genie
+holds two albums: `151` = discs 1 **and 3** (30 rows, track numbers
+1–15 twice) and `152` = disc 2 alone, whose album name ends in a space.
+The browser's album level therefore listed 30 rows interleaved by bare
+track number, and ロビンソン (disc 1, track 11) sat at display index
+20 — where the platform album has ホタル (disc 2, track 6). Handing
+that row position to the queue played ホタル.
+
+So the album path takes the songs discipline: count the start index
+against the query the queue actually runs — `album_id=N` with
+`track IS NULL OR track < t OR (track = t AND _id < id)`, SQLite's own
+`ORDER BY track` order (NULL first, rowid ties). Live on device: display
+20 → platform 10 (ロビンソン ✓), display 21 → platform 40 (雪風, disc 3
+track 11 ✓), ordinary single-disc album unchanged (display 4 → platform
+4 ✓). The `album index N (displayed) -> M` log line prints only when the
+two differ, and `binder queue ok … cued platform trackId=` names the
+track the engine actually cued.
+
+Open question: whether the stock app reasserts its persisted list on a
+cold start after our open().
 
 **Queue-next over a platform playlist (PROVEN LIVE 2026-07-21).** ADD
 TO NOW PLAYING rides one launcher-owned platform playlist ("ZX1 NOW

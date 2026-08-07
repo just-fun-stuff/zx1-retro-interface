@@ -94,7 +94,12 @@ final class PlayerHandoff {
          * provider order.
          */
         final String sortOrder;
-        /** 0-based index of the chosen track within that ordered result. */
+        /**
+         * 0-based index of the chosen track in the list the browser
+         * displayed. The binder tier never submits it: the queue it opens
+         * is a platform query, and the index is recounted there against
+         * that query. Kept for the log line that compares the two.
+         */
         final int startIndex;
         /** Genie id of the chosen track, for verification logging; 0 = none. */
         final long trackId;
@@ -203,6 +208,8 @@ final class PlayerHandoff {
 
     /** The Genie→platform join for this request; set by the binder tier. */
     private volatile AlbumArtResolver.PlatformRow platformRow;
+    /** The index actually submitted by the last open(), for the log line. */
+    private volatile int queueIndex = -1;
 
     /** Registration state, kept for the polite teardown after delivery. */
     private volatile IBinder mediaServiceBinder;
@@ -370,13 +377,8 @@ final class PlayerHandoff {
                 return;
             }
             boolean playing = false;
-            if (isAlbumQueue() && platformRow.albumId > 0) {
-                playing = attemptPlayback(player,
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        request.startIndex,
-                        MediaStore.Audio.Media.TRACK,
-                        MediaStore.Audio.Media.ALBUM_ID + "=" + platformRow.albumId,
-                        "platform-album");
+            if (isAlbumQueue() && platformRow.albumId > 0 && platformRow.trackId > 0) {
+                playing = attemptAlbumQueue(player);
             } else if (isSongsQueue() && platformRow.trackId > 0) {
                 playing = attemptSongsQueue(player);
             }
@@ -402,8 +404,9 @@ final class PlayerHandoff {
                 // in one logcat read.
                 Log.i(TAG, "binder queue ok for " + request.label
                         + " (now trackId=" + (after == null ? "?" : after.trackId)
-                        + " requested trackId=" + request.trackId
-                        + " index=" + request.startIndex + ")");
+                        + " cued platform trackId=" + platformRow.trackId
+                        + " requested genie trackId=" + request.trackId
+                        + " index=" + queueIndex + ")");
                 deliver(TIER_BINDER_QUEUE);
                 return;
             }
@@ -741,6 +744,7 @@ final class PlayerHandoff {
             openEvent = null;
         }
         listClosedEvent = false;
+        queueIndex = startIndex;
         TaskResult opened = open(player, uri, startIndex, selection, sortOrder,
                 SonyWalkmanContract.MUSIC_LIST_TAG);
         Log.i(TAG, "open " + what + " uri=" + uri + " index=" + startIndex
@@ -779,6 +783,84 @@ final class PlayerHandoff {
     /** The tapped queue is the all-songs list when its uri is the flat table. */
     private boolean isSongsQueue() {
         return SonyWalkmanContract.GENIE_AUDIO_URI.equals(request.queueUri);
+    }
+
+    /**
+     * ALBUM taps: the platform album ordered by track, cued at this
+     * track's position within that same ordering - never at the row's
+     * position on screen. The two orders are different lists in general:
+     * the browser shows Genie's album (Genie buckets by the album-name
+     * string, so two discs whose tags spell the name identically become
+     * one album, and a third disc whose tag has a trailing space becomes
+     * another) sorted by the bare tag track number, while the platform
+     * album is every disc of the set with the scanner's disc*1000+track
+     * numbering - disc-major, and 45 rows where the screen showed 30.
+     * Counting the index against the queue's own query is what makes the
+     * tapped track exact, the same discipline the SONGS queue uses.
+     */
+    private boolean attemptAlbumQueue(IBinder player) throws RemoteException {
+        String selection = MediaStore.Audio.Media.ALBUM_ID + "=" + platformRow.albumId;
+        int index = platformAlbumIndex(selection, platformRow.trackId);
+        if (index < 0) {
+            Log.i(TAG, "album index unresolved for " + request.label
+                    + "; using the one-track form");
+            return false;
+        }
+        if (index != request.startIndex) {
+            Log.i(TAG, "album index " + request.startIndex + " (displayed) -> "
+                    + index + " (platform album " + platformRow.albumId + ") for "
+                    + request.label);
+        }
+        return attemptPlayback(player, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                index, MediaStore.Audio.Media.TRACK, selection, "platform-album");
+    }
+
+    /**
+     * The track's position under {@code ORDER BY track} within the album
+     * the queue selects: SQLite's own order - NULL track first, then
+     * ascending, rowid breaking ties. -1 when unresolved.
+     */
+    private int platformAlbumIndex(String albumSelection, long platformTrackId) {
+        int trackNo = -1;
+        boolean trackKnown = false;
+        Cursor cursor = null;
+        try {
+            cursor = context.getContentResolver().query(
+                    ContentUris.withAppendedId(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, platformTrackId),
+                    new String[]{MediaStore.Audio.Media.TRACK}, null, null, null);
+            if (cursor == null || !cursor.moveToFirst()) {
+                return -1;
+            }
+            trackKnown = !cursor.isNull(0);
+            trackNo = trackKnown ? cursor.getInt(0) : -1;
+        } catch (RuntimeException exception) {
+            return -1;
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        String track = MediaStore.Audio.Media.TRACK;
+        String id = MediaStore.Audio.Media._ID;
+        String before = trackKnown
+                ? track + " IS NULL OR " + track + " < " + trackNo + " OR ("
+                        + track + " = " + trackNo + " AND " + id + " < " + platformTrackId + ")"
+                : track + " IS NULL AND " + id + " < " + platformTrackId;
+        cursor = null;
+        try {
+            cursor = context.getContentResolver().query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    new String[]{MediaStore.Audio.Media._ID},
+                    albumSelection + " AND (" + before + ")", null, null);
+            return cursor == null ? -1 : cursor.getCount();
+        } catch (RuntimeException exception) {
+            return -1;
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
     }
 
     /**

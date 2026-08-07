@@ -900,11 +900,16 @@ public class MusicLibraryActivity extends Activity {
     }
 
     /**
-     * An album opens whole - the queue URI is the entire disc with no
-     * ORDER BY, byte-for-byte the player's own album descriptor (the
-     * provider's default order for an album path is track order). The
-     * local comparator matches it: trackNo, then _id - the provider's
-     * rowid tiebreak - so the tapped row's index is the queue index.
+     * The album level shows Genie's album in the provider's own order
+     * (trackNo, then _id - its rowid tiebreak). What a tap opens is the
+     * PLATFORM album of the tapped track, and the two are not the same
+     * list in general: Genie buckets by the album-name string, so the
+     * discs of a box set whose tags spell the name identically land in
+     * one Genie album while a disc whose tag carries a stray trailing
+     * space lands in another, and the platform keeps the whole set under
+     * one album_id with the scanner's disc*1000+track numbering. The row
+     * position here is therefore never the queue index - PlayerHandoff
+     * recounts it against the query it actually opens.
      */
     private void pushAlbumTracks(LibraryStore.Group album) {
         pushLevel(buildAlbumTracksFrame(album));
