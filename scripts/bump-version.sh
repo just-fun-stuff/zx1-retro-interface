@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 NEW="${1:?usage: scripts/bump-version.sh <versionName, e.g. 0.2>}"
-GRADLE=LaLauncher/build.gradle
+GRADLE=app/build.gradle
 
 CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' "$GRADLE")
 OLD=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" "$GRADLE")

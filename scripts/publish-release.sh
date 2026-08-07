@@ -25,7 +25,7 @@ UPSTREAM=$(git rev-parse '@{u}' 2>/dev/null || true)
 
 scripts/build-release.sh
 
-VER=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" LaLauncher/build.gradle)
+VER=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" app/build.gradle)
 TAG="v$VER"
 APK="dist/zx1-retro-interface-$VER.apk"
 

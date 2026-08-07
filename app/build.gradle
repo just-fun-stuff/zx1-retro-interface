@@ -1,6 +1,11 @@
 // Modified 2026-07-17: dependency-free API 16 launcher build.
 apply plugin: 'com.android.application'
 
+// Artifacts are named for the app, not for the module directory:
+// zx1-retro-interface-debug.apk / -release.apk, matching the name the
+// release script gives the versioned copy it puts in dist/.
+archivesBaseName = 'zx1-retro-interface'
+
 // Release signing is read from an untracked keystore.properties in the repo
 // root (storeFile/storePassword/keyAlias/keyPassword). Without it, release
 // builds are simply unsigned - the file and the keystore stay out of git.

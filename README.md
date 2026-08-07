@@ -69,7 +69,7 @@ You need:
 ./gradlew lintDebug assembleDebug
 ```
 
-The APK ends up at `LaLauncher/build/outputs/apk/debug/LaLauncher-debug.apk`; install it the same way as above.
+The APK ends up at `app/build/outputs/apk/debug/zx1-retro-interface-debug.apk`; install it the same way as above.
 
 ## How it works
 

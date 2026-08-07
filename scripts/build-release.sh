@@ -12,7 +12,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 ./gradlew lintDebug assembleRelease
 
-APK=LaLauncher/build/outputs/apk/release/LaLauncher-release.apk
+APK=app/build/outputs/apk/release/zx1-retro-interface-release.apk
 [ -f "$APK" ] || { echo "expected $APK was not produced" >&2; exit 1; }
 
 SDK=$(sed -n 's/^sdk.dir=//p' local.properties)
@@ -22,7 +22,7 @@ echo
 echo "== signature =="
 "$APKSIGNER" verify --print-certs "$APK" | sed -n '1,4p'
 
-VER=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" LaLauncher/build.gradle)
+VER=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" app/build.gradle)
 mkdir -p dist
 OUT="dist/zx1-retro-interface-$VER.apk"
 cp "$APK" "$OUT"
