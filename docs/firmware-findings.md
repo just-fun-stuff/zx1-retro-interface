@@ -619,7 +619,14 @@ FLAC and ALAC up to 192 kHz / 24-bit, MP3, AAC. Containers `audio/flac`,
 - The hi-res path (S-Master) **bypasses the AudioFlinger mixer
   entirely**: the mixer idles during playback, yet Sony's audio policy
   still refcounts STREAM_MUSIC, so `AudioManager.isMusicActive()` stays
-  a valid PLAY/STOP fallback.
+  a valid PLAY/STOP fallback. Re-measured 2026-08-06 with a queue
+  audibly playing: `dumpsys media.audio_flinger` reported the output
+  thread `standby: 1` with **zero tracks and zero active tracks**, while
+  `dumpsys media.audio_policy` reported `mStreamCount[3] = 1` (stream 3
+  = MUSIC). **The flinger dump is therefore not evidence about playback
+  on this device** — read `mStreamCount[3]`, which is the same counter
+  `isMusicActive()` reads. A blank flinger dump has already been
+  mistaken once for "nothing is playing".
 - The only Sony ServiceManager entry is `wmportservice`; the media
   service is reachable exclusively as the app-bound binder.
 - `com.sonyericsson.audioeffectservice` broadcasts effect/route status
@@ -762,6 +769,58 @@ max 1008 MHz during the runs, CRC32 computed alongside):
   any row; Sony plays it); `FlacDecoder` handles independent channels
   to 8, and `BandAnalyzer` mixes any channel count.
 
+## `recreate()` from `onResume` freezes the screen (API 16)
+
+Device-verified 2026-08-06 on firmware 1.13. Calling `Activity.recreate()`
+**from inside `onResume()`** leaves the relaunched activity permanently
+paused while it stays on screen — the launcher's style reconciliation did
+exactly this, so one Settings > Style change froze whatever screen the user
+returned to.
+
+Mechanism, all in Jelly Bean's `ActivityThread`:
+
+- `requestRelaunchActivity(…, fromServer = false)` — what `recreate()`
+  issues — records `target.startsNotResumed = existing.paused`.
+- `performResumeActivity` clears `r.paused` **after** `performResume()`
+  returns, so while `onResume()` is executing the record still reads
+  *paused*. The local relaunch is therefore flagged `startsNotResumed`.
+- `handleRelaunchActivity` → `handleLaunchActivity` then creates the new
+  instance, resumes it, and immediately calls `callActivityOnPause` on it.
+- No further resume ever arrives: the activity manager never knew about a
+  purely local relaunch, so from its side nothing changed.
+
+The result is an activity that is **visible, focused and still touchable**
+but has run `onPause` — every resume-driven timer, poll and receiver torn
+down, and the window left showing whatever was drawn in that one resumed
+frame. Captured trace of the fatal pause:
+
+```
+FavouriteAppsActivity.onPause
+android.app.Activity.performPause
+android.app.Instrumentation.callActivityOnPause
+android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:2103)
+android.app.ActivityThread.handleRelaunchActivity(ActivityThread.java:3512)
+```
+
+On home the frozen state reads as a launcher that is lying: the status word
+holds the one value `onResume` computed synchronously, the LCD clock and the
+footer keep their **layout placeholder** text (`00:00`, `SPEAKER  •  24 BIT`),
+the art panel shows the plasma bitmap that was allocated but never rendered
+(an empty frame), the spectrum holds its baseline, and no track lines ever
+arrive because the binder poll was stopped. Nothing recovers it, because
+nothing resumes the activity again.
+
+**Fix:** post the relaunch instead of calling it inline
+(`Skin.restyleIfChanged`) so `onResume()` returns — and `r.paused` is
+cleared — before the relaunch is queued. `SettingsActivity`'s own
+`recreate()` was always safe: it runs from a click listener, where the
+record is genuinely unpaused.
+
+Corollary for debugging: **a screen-off device produces the same picture**
+(home resumes, then pauses ~70 ms later), and `screencap` still returns the
+last drawn frame. Check `dumpsys window | grep mScreenOnFully` before
+concluding anything from a screenshot.
+
 ## Misc verified facts
 
 - wm2 activity table exports `ACTION_START_TOP`, `ACTION_START_DASHBOARD`,
@@ -770,6 +829,10 @@ max 1008 MHz during the runs, CRC32 computed alongside):
 - `MusicControlService` exports `appwidget.PREV / NEXT / PLAY_PAUSE /
   PLAY / PAUSE / CUE_START / REV_START / …` — working transport intents
   (unused by design: hardware keys own transport).
+- The player's **process names carry no package string**: wm2 runs as
+  `mediaplayers.musicapp` (plus `mediaplayers.wmmedia`), both under the
+  wm2 uid. `ps | grep wm2` finds nothing while the player is running and
+  playing — grep the uid or `dumpsys activity processes` instead.
 - `GenieProtectedMediaStore` (DRM titles) needs a signature|system
   permission — DRM tracks won't appear via the open provider; skip.
 - The platform media scanner runs on this firmware alongside Genie's

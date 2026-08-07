@@ -254,9 +254,9 @@ public class PlaylistsActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (LauncherSettings.getStyle(this) != skin.style) {
-            // The style changed while this screen was paused; re-inflate.
-            recreate();
+        if (Skin.restyleIfChanged(this, skin)) {
+            // The style changed while this screen was paused; the
+            // re-inflate is posted.
             return;
         }
         if (firstResumeDone && workerThread != null) {

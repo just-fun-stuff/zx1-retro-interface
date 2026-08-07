@@ -315,10 +315,9 @@ public class MusicLibraryActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (LauncherSettings.getStyle(this) != skin.style) {
+        if (Skin.restyleIfChanged(this, skin)) {
             // The style changed while this screen was paused (SETTINGS via
-            // the program index); re-inflate under the new one.
-            recreate();
+            // the program index); the re-inflate under the new one is posted.
             return;
         }
         getContentResolver().registerContentObserver(

@@ -99,9 +99,7 @@ public class InstalledAppsActivity extends Activity {
         super.onResume();
         // The SETTINGS screen sits above this one; a style change there is
         // reconciled the moment this screen shows again.
-        if (LauncherSettings.getStyle(this) != skin.style) {
-            recreate();
-        }
+        Skin.restyleIfChanged(this, skin);
     }
 
     /** TUBE AMP re-tint; on LCD the inflated resources already match. */

@@ -254,9 +254,9 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     @Override
     protected void onResume() {
         super.onResume();
-        if (LauncherSettings.getStyle(this) != skin.style) {
-            // Style changed on the SETTINGS screen; re-inflate under it.
-            recreate();
+        if (Skin.restyleIfChanged(this, skin)) {
+            // Style changed on the SETTINGS screen; the re-inflate under it
+            // is posted, so nothing below is worth starting.
             return;
         }
         int wantedArt = LauncherSettings.getArtworkStyle(this);

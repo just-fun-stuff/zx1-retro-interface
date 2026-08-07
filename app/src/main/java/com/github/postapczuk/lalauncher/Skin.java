@@ -7,6 +7,7 @@
  */
 package com.github.postapczuk.lalauncher;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.ClipDrawable;
@@ -15,6 +16,8 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -105,6 +108,40 @@ final class Skin {
 
     boolean isLcd() {
         return style != LauncherSettings.STYLE_TUBE_AMP;
+    }
+
+    /**
+     * Reconciles a screen against a Style changed on the SETTINGS screen
+     * while it was paused. Returns true when a re-inflate is on its way and
+     * the caller must abandon the rest of its resume work.
+     *
+     * <p>The relaunch is <b>posted</b>, never called inline. On API 16
+     * {@code ActivityThread.requestRelaunchActivity} copies the activity
+     * record's current {@code paused} flag into {@code startsNotResumed},
+     * and that flag is still set while {@code onResume()} runs -
+     * {@code performResumeActivity} clears it only after
+     * {@code performResume()} has returned. A {@code recreate()} issued
+     * from inside {@code onResume()} therefore relaunches into an activity
+     * that {@code handleLaunchActivity} pauses again the instant it has
+     * resumed: still visible, focused and touchable, but with every
+     * resume-driven timer, poll and receiver torn down by that pause - and
+     * no further resume ever arrives, because the activity manager never
+     * knew about the purely local relaunch. Posting lets {@code onResume()}
+     * return first, so the record is unpaused and the relaunch resumes for
+     * real. Device-verified on firmware 1.13; see docs/firmware-findings.md,
+     * "recreate() from onResume".
+     */
+    static boolean restyleIfChanged(final Activity activity, Skin applied) {
+        if (LauncherSettings.getStyle(activity) == applied.style) {
+            return false;
+        }
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                activity.recreate();
+            }
+        });
+        return true;
     }
 
     // ------------------------------------------------------------- drawables
