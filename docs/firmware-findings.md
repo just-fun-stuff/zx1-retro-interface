@@ -446,9 +446,20 @@ their rows `1-01` … `3-15`, which is both the tag order and the order
 the queue will run. The `disc map …` line logs the outcome, the disc
 count or the rung that refused, and the measured milliseconds — the
 provider is reached only for albums with repeated track numbers, so an
-ordinary library never logs it at all. **Needs on-device timing**: the
-representative-row join is an unindexed `title = ?` scan, the same one
-every album tap already pays in the handoff.
+ordinary library never logs it at all.
+
+**Measured on the device 2026-08-06** (1523-track library, both queries
+on the UI thread as the level opens): the SPITZ box set resolved
+`disc map 2 discs … (30 rows) in 19ms`, and **42 ms** on a later open
+with the caches colder — the representative-row `title = ?` scan is the
+same unindexed scan every album tap already pays in the handoff, and the
+`album_id=N` sweep is indexed. Below a frame either way, and it happens
+once per album per visit (both outcomes are memoized, so an album that
+cannot resolve does not pay again). COWBOYS FROM HELL and every other
+ordinary album logged nothing at all — the repeated-track-number gate
+means they never reach the provider. Rows read `1-01` … `1-15` then
+`3-01` … `3-15`, with no disc 2 invented, and a tap still cues exactly:
+display 15 → platform 30 → 魔法のコトバ (disc 3, track 1).
 
 Note this leaves the *other* half of Genie's bucketing visible and
 honest: disc 2 of the SPITZ set has a trailing space in its album tag,
