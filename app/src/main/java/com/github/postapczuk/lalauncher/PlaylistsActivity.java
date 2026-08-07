@@ -1097,8 +1097,14 @@ public class PlaylistsActivity extends Activity {
         if (worker == null) {
             return;
         }
-        if (!PlaylistStore.isUsableName(name)) {
+        if (name.length() == 0) {
             Toast.makeText(this, R.string.playlist_name_needed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!PlaylistStore.isUsableName(name)) {
+            // Named, but a name the store will not hold - the reserved queue
+            // list, or one the index filter would hide.
+            Toast.makeText(this, R.string.playlist_name_refused, Toast.LENGTH_SHORT).show();
             return;
         }
         final int mode = inputMode;

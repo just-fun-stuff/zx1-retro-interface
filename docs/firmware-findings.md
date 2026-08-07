@@ -557,6 +557,22 @@ ORDER BY the engine runs, so a row's display index is its queue index.
 The AOSP idiom is followed for member identity: `_id` on the members
 uri is the map-row id, and a member is deleted by appended-id uri.
 
+**The platform playlists table carries the scanner's AppleDouble twins
+(OBSERVED ON DEVICE 2026-08-06).** A library filled from a Mac has a
+`._<name>.m3u` sidecar beside every `<name>.m3u` — macOS's AppleDouble
+resource fork, written on any FAT volume. The platform media scanner
+indexes both as playlists, so the table holds a junk twin for every real
+playlist file, and `._` sorts above every letter and digit, so the twins
+own the whole first screen of MY LISTS. The sidecar is binary, so the
+scanner resolves **0 members** out of it; the real `.m3u` beside it
+resolves its tracks normally. `PlaylistStore.readAll` therefore hides a
+row on both marks together — name prefix `._` **and** a member count of
+exactly 0 — never either alone: an empty list is the normal state of one
+the user just created, and a count of -1 is the members uri refusing the
+read (unknown, not empty). `isUsableName` refuses the prefix on the write
+side, so the filter provably cannot swallow a launcher-made list. Genie's
+own playlist table is unaffected (11 rows, Sony's lists only).
+
 Open questions the current build is built to answer (all logged under
 `ZX1Playlists`; nothing below is claimed as proven):
 

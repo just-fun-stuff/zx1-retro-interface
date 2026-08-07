@@ -56,6 +56,8 @@ final class PlaylistStore {
     private static final String PREF_PLAYLIST_ID = "playlist_id";
     /** How many rows of a Sony list the launcher will mirror in one tap. */
     private static final int MIRROR_CAP = 500;
+    /** macOS's AppleDouble sidecar prefix; see {@link #isAppleDoubleJunk}. */
+    private static final String APPLE_DOUBLE_PREFIX = "._";
 
     /** One playlist row plus its real member count. */
     static final class Entry {
@@ -138,8 +140,10 @@ final class PlaylistStore {
 
     /**
      * Worker thread. The launcher's playlists, alphabetical, each with its
-     * real member count. The reserved queue list is filtered out. null when
-     * the platform playlists table refuses the read - unknown, not empty.
+     * real member count. The reserved queue list and the scanner's
+     * AppleDouble twins ({@link #isAppleDoubleJunk}) are filtered out. null
+     * when the platform playlists table refuses the read - unknown, not
+     * empty.
      */
     static List<Entry> readAll(Context context) {
         Cursor cursor = null;
@@ -154,13 +158,22 @@ final class PlaylistStore {
                 return null;
             }
             List<Entry> entries = new ArrayList<Entry>();
+            int hidden = 0;
             while (cursor.moveToNext()) {
                 long id = cursor.getLong(0);
                 String name = cursor.isNull(1) ? null : cursor.getString(1);
                 if (id <= 0 || QUEUE_PLAYLIST_NAME.equals(name)) {
                     continue;
                 }
-                entries.add(new Entry(id, name, memberCount(context, id)));
+                int trackCount = memberCount(context, id);
+                if (isAppleDoubleJunk(name, trackCount)) {
+                    hidden++;
+                    continue;
+                }
+                entries.add(new Entry(id, name, trackCount));
+            }
+            if (hidden > 0) {
+                Log.i(TAG, "hid " + hidden + " empty AppleDouble playlist row(s)");
             }
             Collections.sort(entries, BY_NAME);
             return entries;
@@ -183,6 +196,30 @@ final class PlaylistStore {
             return order != 0 ? order : Long.valueOf(left.id).compareTo(right.id);
         }
     };
+
+    /**
+     * Whether this row is one of the media scanner's AppleDouble twins.
+     *
+     * macOS writes a sidecar {@code ._<name>} beside every file it copies
+     * to a FAT volume (the file's resource fork). The platform scanner
+     * indexes {@code ._<album>.m3u} as a playlist exactly as it indexes the
+     * real {@code <album>.m3u} next to it, so a library filled from a Mac
+     * arrives with a junk twin for every playlist file - and {@code "._"}
+     * sorts above every letter and digit, so the twins take the whole first
+     * screen.
+     *
+     * Hiding one needs <b>both</b> marks. The name prefix alone is not
+     * enough, and neither is the count: an empty list is the normal state of
+     * one the user just created. An AppleDouble file is binary, so the
+     * scanner resolves no members out of it - a {@code "._"} list that does
+     * hold tracks is something else and stays. A count of -1 is the members
+     * uri refusing the read: unknown, not empty, so that row stays too.
+     * {@link #isUsableName} refuses the prefix, so a list made here can
+     * never match this.
+     */
+    private static boolean isAppleDoubleJunk(String name, int trackCount) {
+        return trackCount == 0 && name != null && name.startsWith(APPLE_DOUBLE_PREFIX);
+    }
 
     /** Worker thread. -1 when the members list is unreadable. */
     static int memberCount(Context context, long playlistId) {
@@ -257,10 +294,15 @@ final class PlaylistStore {
 
     // ---------------------------------------------------------------- writes
 
-    /** Whether a user may own this name: non-blank, not the reserved one. */
+    /**
+     * Whether a user may own this name: non-blank, not the reserved one,
+     * and not one {@link #isAppleDoubleJunk} would hide - so the index
+     * filter can never swallow a list made on this screen.
+     */
     static boolean isUsableName(String name) {
         String trimmed = name == null ? "" : name.trim();
         return trimmed.length() > 0
+                && !trimmed.startsWith(APPLE_DOUBLE_PREFIX)
                 && !QUEUE_PLAYLIST_NAME.equalsIgnoreCase(trimmed);
     }
 

@@ -11,6 +11,7 @@
     <string name="playlist_removed">Removed from the playlist.</string>
     <string name="playlist_deleted">Playlist deleted.</string>
     <string name="playlist_name_needed">Give the playlist a name.</string>
+    <string name="playlist_name_refused">That name cannot be used.</string>
     <string name="playlist_name_taken">That name is already in use.</string>
     <string name="playlist_playing_now">That playlist is playing right now.</string>
     <string name="track_unmatched">This track has no unique match in the media database.</string>
