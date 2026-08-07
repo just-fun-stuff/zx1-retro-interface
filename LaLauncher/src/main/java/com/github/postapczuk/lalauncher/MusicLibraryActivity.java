@@ -30,6 +30,7 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -201,6 +202,11 @@ public class MusicLibraryActivity extends Activity {
     private List<LibraryStore.Group> frameArtistAlbums = Collections.emptyList();
     /** Whether the album being viewed has more than one artist (set on push). */
     private boolean frameAlbumMixedArtists;
+    /** The album being viewed, when it is several discs; null otherwise. */
+    private AlbumDiscMap frameAlbumDiscs;
+    /** Disc maps already resolved this visit, null values included. */
+    private final HashMap<String, AlbumDiscMap> discMaps =
+            new HashMap<String, AlbumDiscMap>();
 
     private final Runnable freshnessRunnable = new Runnable() {
         @Override
@@ -786,14 +792,24 @@ public class MusicLibraryActivity extends Activity {
         }
     }
 
+    /**
+     * Track rows are numbered by their own tag - the deck numbering, not
+     * the row's position. A multi-disc album (and only one that resolved
+     * to real disc numbers) reads its disc first: 1-01 … 3-15, the one
+     * form that stays unambiguous when the same number appears on every
+     * disc of the set.
+     */
     private void buildAlbumTrackRows(Frame frame) {
         boolean mixedArtists = frameAlbumMixedArtists;
+        AlbumDiscMap discs = frameAlbumDiscs;
         for (int i = 0; i < frame.queue.size(); i++) {
             LibraryStore.Track track = frame.queue.get(i);
             int number = track.trackNo > 0
-                    ? (track.trackNo > 1000 ? track.trackNo % 1000 : track.trackNo)
-                    : i + 1;
-            visibleRows.add(new DisplayRow(String.format(Locale.US, "%02d", number),
+                    ? AlbumDiscMap.bareTrackNo(track.trackNo) : i + 1;
+            int disc = discs == null ? 0 : discs.discOf(track);
+            visibleRows.add(new DisplayRow(
+                    disc > 0 ? String.format(Locale.US, "%d-%02d", disc, number)
+                            : String.format(Locale.US, "%02d", number),
                     upper(track.title, "UNKNOWN"),
                     mixedArtists ? upper(track.artist, null) : null,
                     duration(track.durationMs), track, null, -1));
@@ -910,6 +926,12 @@ public class MusicLibraryActivity extends Activity {
      * one album_id with the scanner's disc*1000+track numbering. The row
      * position here is therefore never the queue index - PlayerHandoff
      * recounts it against the query it actually opens.
+     *
+     * When such an album does resolve to real disc numbers
+     * ({@link AlbumDiscMap}) the level is shown disc-major and numbered
+     * disc-track, which is both the tags' own order and the order the
+     * player will run. Everything else - every ordinary album - is
+     * untouched: Genie's order, plain two-digit numbers.
      */
     private void pushAlbumTracks(LibraryStore.Group album) {
         pushLevel(buildAlbumTracksFrame(album));
@@ -927,7 +949,9 @@ public class MusicLibraryActivity extends Activity {
                 }
             }
         }
-        Collections.sort(rows, LibraryStore.ALBUM_ORDER);
+        frameAlbumDiscs = discMapFor(album, rows);
+        Collections.sort(rows, frameAlbumDiscs == null
+                ? LibraryStore.ALBUM_ORDER : frameAlbumDiscs.order());
         frameAlbumMixedArtists = artistsSeen.size() > 1;
         Frame frame = new Frame(LEVEL_ALBUM_TRACKS, upper(album.name, "UNKNOWN ALBUM"),
                 rows,
@@ -935,6 +959,27 @@ public class MusicLibraryActivity extends Activity {
                 null);
         frame.navKey = album.key;
         return frame;
+    }
+
+    /**
+     * The album's disc map, resolved once per browser session. Both
+     * outcomes are remembered - a repeat open of an album that cannot
+     * resolve must not pay the provider sweep again - and both are
+     * forgotten with the activity, so a later visit retries against a
+     * platform scanner that has since caught up. The snapshot's
+     * fingerprint is part of the key: a map covers the rows it resolved,
+     * and an album that gained a track must resolve again rather than
+     * number the newcomer differently from its neighbours.
+     */
+    private AlbumDiscMap discMapFor(LibraryStore.Group album,
+                                    List<LibraryStore.Track> rows) {
+        String key = album.key + "@" + library.fingerprint;
+        if (discMaps.containsKey(key)) {
+            return discMaps.get(key);
+        }
+        AlbumDiscMap map = AlbumDiscMap.resolve(this, album.name, rows);
+        discMaps.put(key, map);
+        return map;
     }
 
     // --------------------------------------------------------------- handoff

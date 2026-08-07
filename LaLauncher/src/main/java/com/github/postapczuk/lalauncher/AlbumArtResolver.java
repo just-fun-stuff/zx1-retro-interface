@@ -68,7 +68,7 @@ final class AlbumArtResolver {
     /** Streams larger than this are not cover art; abandon, never OOM. */
     private static final int MAX_ART_STREAM_BYTES = 6 * 1024 * 1024;
     /** Genie and the platform scanner read the same tags; allow scan jitter. */
-    private static final long PLATFORM_DURATION_TOLERANCE_MS = 2000L;
+    static final long PLATFORM_DURATION_TOLERANCE_MS = 2000L;
 
     private static final Uri PLATFORM_ALBUM_ART_URI =
             Uri.parse("content://media/external/audio/albumart");

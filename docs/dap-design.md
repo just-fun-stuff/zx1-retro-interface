@@ -33,7 +33,13 @@ constraints live in CLAUDE.md.
   plus platform-MediaStore queues — album and songs taps play on the
   firmware engine cued at the tapped row with no UI switch, and the
   now-playing poll maps the reported platform ids back to Genie rows for
-  the glass. The browser remembers its whole navigation stack (level,
+  the glass. A box set that Genie collapsed into one album — Genie
+  buckets by the album-name string and has no disc column — is shown
+  disc-major and numbered `1-01` … `3-15` whenever the disc numbers can
+  really be read (`AlbumDiscMap`, from Genie's own encoded track number
+  or one two-query platform join); when they cannot, the level is left
+  exactly as Genie hands it over rather than half-labelled. The browser
+  remembers its whole navigation stack (level,
   scroll, search filter) across visits and style changes, re-resolved
   against the current library so a vanished album can never strand it.
   Long-press on any track opens the LCD task menu: **ADD TO NOW

@@ -12,11 +12,15 @@
     android:paddingRight="8dp"
     android:paddingBottom="6dp">
 
+    <!-- Wide enough for the widest number the browser prints: SONGS' 999
+         and a multi-disc album's 1-01. Single-lined so an absurd disc
+         count clips instead of re-flowing the row. -->
     <TextView
         android:id="@+id/lib_row_index"
         android:layout_width="42dp"
         android:layout_height="wrap_content"
         android:fontFamily="monospace"
+        android:singleLine="true"
         android:textColor="@color/lcd_ink_dim"
         android:textSize="14sp"
         android:textStyle="bold" />

@@ -414,6 +414,48 @@ track 11 ✓), ordinary single-disc album unchanged (display 4 → platform
 two differ, and `binder queue ok … cued platform trackId=` names the
 track the engine actually cued.
 
+**The display half: the disc number is a column Genie does not have.**
+Playback correctness left the *screen* still listing that album 01, 01,
+02, 02 … — an order that is neither the tags' nor the one the player
+runs. Genie stores no disc anywhere: not a column of its own, and (for
+these rips) not folded into `track` either. The platform scanner is the
+only side that recorded it, as `disc*1000+track`. So the browser reads
+the disc from whoever really stored it (`AlbumDiscMap`):
+
+1. **Genie's own `track`, when it reads ≥ 1000.** Some rips do arrive
+   that way, and then no provider call is needed at all — the disc is
+   already in the snapshot. (The old display simply stripped it with
+   `% 1000`, which hid a real multi-disc set behind repeated numbers.)
+2. **The platform album, but only for a Genie album that repeats a bare
+   track number** — the one symptom a collapsed multi-disc set can show.
+   Two queries for the whole album, never one per row: the shared strict
+   join resolves a representative row to its `album_id` (probing up to
+   three rows, since any one file may be the unmatchable one), then one
+   `album_id=N` sweep — the column is indexed — is joined in memory
+   against the rows on screen by title + duration-within-tolerance +
+   `track % 1000`, requiring exactly one survivor per row.
+
+Discipline, as everywhere else here: all or nothing. Unless every row
+resolves and more than one disc appears among them, the level renders
+exactly as before — half-numbered rows would be worse than the
+interleave. A disc is never inferred from anything the providers did
+not store; in particular Genie's `_id` order usually *does* group the
+discs of a set, and that is a guess, not data, so it is not used.
+Resolved albums sort disc-major (disc, bare track, rowid) and number
+their rows `1-01` … `3-15`, which is both the tag order and the order
+the queue will run. The `disc map …` line logs the outcome, the disc
+count or the rung that refused, and the measured milliseconds — the
+provider is reached only for albums with repeated track numbers, so an
+ordinary library never logs it at all. **Needs on-device timing**: the
+representative-row join is an unindexed `title = ?` scan, the same one
+every album tap already pays in the handoff.
+
+Note this leaves the *other* half of Genie's bucketing visible and
+honest: disc 2 of the SPITZ set has a trailing space in its album tag,
+so it stays its own Genie album, and the box set's level reads 1-01 …
+1-15, 3-01 … 3-15. That now states plainly what Genie knows, instead of
+interleaving two discs into a run of doubled numbers.
+
 Open question: whether the stock app reasserts its persisted list on a
 cold start after our open().
 
