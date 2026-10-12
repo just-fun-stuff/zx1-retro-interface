@@ -120,6 +120,8 @@ final class StorageState {
     private static boolean usbOffPending;
     private static boolean usbOffRefused;
     private static Snapshot published;
+    /** Returns to READY from any other phase, for {@link #outagesEnded}. */
+    private static int outagesEnded;
     /** refresh != NONE, readable from the service's worker thread. */
     private static volatile boolean pendingForService;
 
@@ -145,6 +147,16 @@ final class StorageState {
         }
         publish();
         return published;
+    }
+
+    /**
+     * Main thread. How many times this process has seen the phase come
+     * back to READY. A screen paused through a whole USB session never
+     * hears it on its listener; comparing this count on resume tells it
+     * one happened (home re-reads covers then).
+     */
+    static int outagesEnded() {
+        return outagesEnded;
     }
 
     static void addListener(Listener listener) {
@@ -315,6 +327,9 @@ final class StorageState {
         published = next;
         if (was != next.phase) {
             Log.i(TAG, "phase " + was + " -> " + next.phase);
+            if (was != null && next.phase == Phase.READY) {
+                outagesEnded++;
+            }
         }
         for (Listener listener : new ArrayList<Listener>(LISTENERS)) {
             listener.onStorageChanged(next);

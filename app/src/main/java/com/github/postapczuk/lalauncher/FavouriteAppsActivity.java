@@ -97,6 +97,8 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     private StoragePanel storagePanel;
     /** The storage phase last applied is not READY (the panel holds the glass). */
     private boolean storageBlocked;
+    /** StorageState.outagesEnded() as of the covers on the glass. */
+    private int storageOutagesSeen;
     // The offline-envelope spectrum (B7b): the renderer replaying stored
     // analysis at the playhead, and the per-track analysis-request dedup.
     private SpectrumController spectrum;
@@ -448,12 +450,14 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
      * the track lines, the art panel, both soft-keys - gives way to the
      * storage panel, since none of it can be honest or useful while the
      * music is out of reach. The title glide and the plasma stop with the
-     * glass they animate. Back at READY the cover cache is flushed - a
-     * cover that read as absent while the volume was gone may be readable
-     * now - and the now-playing glass returns.
+     * glass they animate. Back at READY the now-playing glass returns, and
+     * the cover cache is flushed after any outage - including one that
+     * happened entirely while home was paused ({@link
+     * StorageState#outagesEnded}).
      */
     private void applyStorage(StorageState.Snapshot snapshot) {
         boolean blocked = snapshot.phase != StorageState.Phase.READY;
+        boolean wasBlocked = storageBlocked;
         if (blocked) {
             storagePanel.render(snapshot);
         }
@@ -473,10 +477,17 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
                 // for again on the first PLAY poll once the music is back.
                 spectrumRequestedId = 0;
                 spectrumRequestedDuration = 0;
-            } else {
-                flushArtCache();
-                renderPlaybackState();
             }
+        }
+        if (!blocked && storageOutagesSeen != StorageState.outagesEnded()) {
+            // Back from a stretch out of reach - heard live, or one that
+            // began and ended while home was paused - so a cover that read
+            // as absent then may be readable now, or replaced over USB.
+            storageOutagesSeen = StorageState.outagesEnded();
+            flushArtCache();
+        }
+        if (!blocked && wasBlocked) {
+            renderPlaybackState();
         }
         lcdTitleView.setActive(resumed && !storageBlocked);
     }
