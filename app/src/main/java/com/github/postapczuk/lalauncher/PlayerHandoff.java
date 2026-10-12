@@ -62,8 +62,9 @@ import java.util.List;
  * </pre>
  *
  * One instance serves one request on a private short-lived worker thread,
- * then unbinds and quits. All failures degrade to the next tier; the
- * listener always hears exactly one outcome, on the main thread.
+ * then unbinds and quits. All failures degrade to the next tier - except an
+ * unmounted music volume (USB storage), which is refused before any tier
+ * runs; the listener always hears exactly one outcome, on the main thread.
  *
  * A {@link Request#directQueue} request (queue-next, v2.13.0) rides the
  * same registered-client machinery but opens the caller's exact
@@ -289,6 +290,15 @@ final class PlayerHandoff {
         if (serviceWedged) {
             Log.w(TAG, "player service wedged earlier this session; failing fast for "
                     + request.label);
+            deliver(TIER_FAILED);
+            return;
+        }
+        if (!StorageState.musicAvailable()) {
+            // USB storage or a remount: the engine cannot resolve any queue
+            // over an unmounted volume, and a shape it cannot serve risks
+            // the open() wedge that only a reboot clears; the intent tiers
+            // would hand Sony a file that is not there. Nothing is sent.
+            Log.w(TAG, "storage not mounted; refusing: " + request.label);
             deliver(TIER_FAILED);
             return;
         }

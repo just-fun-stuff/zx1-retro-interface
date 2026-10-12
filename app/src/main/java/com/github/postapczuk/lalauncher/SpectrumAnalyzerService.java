@@ -42,7 +42,12 @@ import java.util.Locale;
  * track's end even while home is paused. Settings &gt; Info Screen set to
  * CLOCK turns analysis off wholesale: home stops asking, a running pass
  * yields ({@link #yieldRunningPass}), and {@link #analyze} refuses
- * stragglers - nothing marked failed, so re-enabling simply asks again. There is no bulk pre-analysis -
+ * stragglers - nothing marked failed, so re-enabling simply asks again.
+ * The music volume going away (USB storage) is treated the same way: no
+ * pass starts while it is unmounted, MEDIA_EJECT makes a running pass
+ * close its file ({@link #yieldForStorage}), and a read that fails while
+ * the storage is gone yields instead of marking the track failed - so it
+ * analyzes normally once the storage is back. There is no bulk pre-analysis -
  * only played tracks are analyzed, so the ~20 MB cap fills with the real
  * rotation and the battery cost stays one decode per first listen
  * (measured 9-43x realtime; a typical track costs well under a minute of
@@ -77,6 +82,8 @@ public class SpectrumAnalyzerService extends Service {
 
     /** The newest requested key; a running pass yields when it changes. */
     private static volatile String latestRequest;
+    /** Why latestRequest was last cleared, for the yield log line. */
+    private static volatile String yieldReason = "spectrum off";
 
     private HandlerThread workerThread;
     private Handler worker;
@@ -96,6 +103,19 @@ public class SpectrumAnalyzerService extends Service {
      * {@link #analyze} refuses queued stragglers the same turn.
      */
     static void yieldRunningPass() {
+        yieldReason = "spectrum off";
+        latestRequest = null;
+    }
+
+    /**
+     * MEDIA_EJECT: the music volume is about to unmount for USB storage (or
+     * any unmount), and the platform kills a process that still holds a
+     * file open on it - the launcher included. The running pass closes its
+     * file at the next block and keeps its partial envelope; the track
+     * resumes from there on a later play, once the storage is back.
+     */
+    static void yieldForStorage() {
+        yieldReason = "storage unavailable";
         latestRequest = null;
     }
 
@@ -160,6 +180,18 @@ public class SpectrumAnalyzerService extends Service {
             Log.i(TAG, "spectrum off; skipping " + key);
             return;
         }
+        if (!StorageState.musicAvailable()) {
+            // USB storage or a remount: the file cannot be opened right now.
+            // Not a failure either - nothing is marked.
+            Log.i(TAG, "storage unavailable; skipping " + key);
+            return;
+        }
+        if (!key.equals(latestRequest)) {
+            // Told to yield while still queued (MEDIA_EJECT arrives while
+            // the volume still reads mounted): never open the file at all.
+            Log.i(TAG, "yield " + key + " before start (" + yieldCause() + ")");
+            return;
+        }
         if (SpectrumStore.isFailed(genieId, durationMs)) {
             return;
         }
@@ -203,7 +235,22 @@ public class SpectrumAnalyzerService extends Service {
         }
     }
 
+    /** For the yield log: what cleared latestRequest, or a newer request. */
+    private static String yieldCause() {
+        return latestRequest == null ? yieldReason : "newer request";
+    }
+
+    /**
+     * The track's baseline holds for this boot. Unless the storage itself
+     * went away under the pass: then the file was never the problem, so
+     * nothing is marked and the partial envelope (flushed by the caller's
+     * finally) resumes on a later play.
+     */
     private void giveUp(String key, long genieId, int durationMs, String reason) {
+        if (!StorageState.musicAvailable()) {
+            Log.i(TAG, "yield " + key + " (storage unavailable): " + reason);
+            return;
+        }
         SpectrumStore.markFailed(genieId, durationMs);
         Log.i(TAG, "baseline holds for " + key + ": " + reason);
     }
@@ -286,7 +333,7 @@ public class SpectrumAnalyzerService extends Service {
                         rawPcm ? "extractor pcm" : mime));
             } else {
                 Log.i(TAG, "yield " + key + " at frame " + envelope.frameCount
-                        + (latestRequest == null ? " (spectrum off)" : " (newer request)"));
+                        + " (" + yieldCause() + ")");
             }
         } finally {
             if (writer != null) {
@@ -339,7 +386,7 @@ public class SpectrumAnalyzerService extends Service {
                         alac ? "hand-written alac" : "hand-written flac"));
             } else {
                 Log.i(TAG, "yield " + key + " at frame " + envelope.frameCount
-                        + (latestRequest == null ? " (spectrum off)" : " (newer request)"));
+                        + " (" + yieldCause() + ")");
             }
         } finally {
             if (writer != null) {

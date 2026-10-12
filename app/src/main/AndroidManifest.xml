@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Modified 2026-07-17: renamed and constrained for the NW-ZX1 shell.
-     Modified 2026-07-20: background library refresh receiver + service. -->
+     Modified 2026-07-20: background library refresh receiver + service.
+     Modified 2026-10-12: storage/USB receiver; USB STORAGE OFF permission. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.github.postapczuk.lalauncher">
 
     <!-- All install-time. BOOT_COMPLETED: refresh the library cache after
@@ -13,10 +15,18 @@
          thread). WRITE_EXTERNAL_STORAGE: the launcher's own "ZX1 NOW
          PLAYING" queue lives in the platform playlists table (the one
          store whose members uri is an engine-accepted, path-readable
-         queue descriptor - NowPlayingQueue). -->
+         queue descriptor - NowPlayingQueue). MOUNT_UNMOUNT_FILESYSTEMS:
+         a system permission on stock Android, but this firmware declares it
+         at protection level "dangerous" (pm list permissions), so 4.1
+         grants it at install; its one use is the USB STORAGE OFF key, which
+         ends a USB mass-storage session the way SystemUI's own screen does
+         (StorageState.requestUsbStorageOff). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="true"
@@ -63,19 +73,33 @@
             android:name=".SettingsActivity"
             android:screenOrientation="portrait" />
 
-        <!-- Storage/scan events start a short-lived cache refresh, so the
-             browser opens on current data. Exported-default deliberately:
+        <!-- Storage, cable and scan events: the storage phase every screen
+             shows, and a short-lived cache refresh so the browser opens on
+             current data. Exported-default deliberately:
              MEDIA_SCANNER_FINISHED arrives from the media provider's uid,
-             which a non-exported receiver would refuse on this firmware. -->
-        <receiver android:name=".LibraryRefreshReceiver">
+             which a non-exported receiver would refuse on this firmware.
+             MEDIA_UNSHARED is hidden in the SDK but sent here; Sony's Genie
+             scanner actions sit in both filters because whether they carry
+             a data uri is unverified. -->
+        <receiver android:name=".StorageEventReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.UMS_CONNECTED" />
+                <action android:name="android.intent.action.UMS_DISCONNECTED" />
+                <action android:name="com.sony.walkman.database.media.GenieMediaScannerService.ACTION_GENIE_MEDIA_SCANNER_STARTED" />
+                <action android:name="com.sony.walkman.database.media.GenieMediaScannerService.ACTION_GENIE_MEDIA_SCANNER_FINISHED" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.MEDIA_SCANNER_FINISHED" />
                 <action android:name="android.intent.action.MEDIA_MOUNTED" />
                 <action android:name="android.intent.action.MEDIA_EJECT" />
                 <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
+                <action android:name="android.intent.action.MEDIA_CHECKING" />
+                <action android:name="android.intent.action.MEDIA_SHARED" />
+                <action android:name="android.intent.action.MEDIA_UNSHARED" />
+                <action android:name="android.intent.action.MEDIA_SCANNER_STARTED" />
+                <action android:name="android.intent.action.MEDIA_SCANNER_FINISHED" />
+                <action android:name="com.sony.walkman.database.media.GenieMediaScannerService.ACTION_GENIE_MEDIA_SCANNER_STARTED" />
+                <action android:name="com.sony.walkman.database.media.GenieMediaScannerService.ACTION_GENIE_MEDIA_SCANNER_FINISHED" />
                 <data android:scheme="file" />
             </intent-filter>
         </receiver>

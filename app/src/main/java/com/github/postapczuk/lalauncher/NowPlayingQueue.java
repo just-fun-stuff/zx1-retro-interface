@@ -126,6 +126,14 @@ final class NowPlayingQueue {
     }
 
     private void start() {
+        if (!StorageState.musicAvailable()) {
+            // USB storage or a remount: no queue can be read, written or
+            // reopened over an unmounted volume, and the player must not be
+            // touched (the open() wedge). Refused before any binder call.
+            Log.w(TAG, "storage not mounted; refusing: " + label());
+            finish(false);
+            return;
+        }
         workerThread = new HandlerThread("zx1-queue-next");
         workerThread.start();
         worker = new Handler(workerThread.getLooper());

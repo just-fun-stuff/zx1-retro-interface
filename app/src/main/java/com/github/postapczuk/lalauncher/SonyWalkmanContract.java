@@ -44,6 +44,22 @@ final class SonyWalkmanContract {
             "com.sonyericsson.soundenhancement";
 
     /*
+     * Sony's own Genie indexer (inside the player package) brackets a
+     * library rescan with these two actions - the strings come from the
+     * player package itself. Whether they are broadcast system-wide, and
+     * whether they carry a data uri, was unverified when they were added:
+     * StorageEventReceiver listens both ways and logs each one it hears,
+     * and the post-USB refresh only waits on FINISHED once it has actually
+     * seen STARTED.
+     */
+    static final String ACTION_GENIE_SCANNER_STARTED =
+            "com.sony.walkman.database.media.GenieMediaScannerService"
+                    + ".ACTION_GENIE_MEDIA_SCANNER_STARTED";
+    static final String ACTION_GENIE_SCANNER_FINISHED =
+            "com.sony.walkman.database.media.GenieMediaScannerService"
+                    + ".ACTION_GENIE_MEDIA_SCANNER_FINISHED";
+
+    /*
      * Now-playing binder protocol. Firmware 1.13 emits no metadata broadcast
      * and registers no RemoteControlClient, so the current track must be
      * pulled from the player's own media service. The descriptors,

@@ -112,6 +112,15 @@ final class PlaylistEditor {
     }
 
     private void start() {
+        if (!StorageState.musicAvailable()) {
+            // USB storage or a remount: the platform playlists cannot be
+            // trusted and the player must not be asked about, or handed, a
+            // queue over an unmounted volume (the open() wedge). Refused
+            // before any binder call; nothing is changed.
+            Log.w(TAG, "storage not mounted; refusing: " + label);
+            finish(EDIT_FAILED);
+            return;
+        }
         workerThread = new HandlerThread("zx1-playlist-edit");
         workerThread.start();
         new Handler(workerThread.getLooper()).post(new Runnable() {
