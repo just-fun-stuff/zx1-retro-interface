@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- MUSIC LIBRARY browser (C1): the program index's mechanism applied to
-     the Genie library - shallow metadata lists on the glass. The overlay
-     covers a full rebuild with a real progress bar; cached opens never
-     show it. -->
+     the Genie library - shallow metadata lists on the glass. The storage
+     overlay covers the stretches the music is out of reach, and a full
+     rebuild with a real progress bar; cached opens never show it. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/lib_root"
     android:layout_width="match_parent"
@@ -98,53 +98,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Full-rebuild overlay: opaque chassis with an LCD readout panel,
-         like a deck reporting a disc scan. Eats touches while visible. -->
-    <LinearLayout
-        android:id="@+id/lib_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/chassis_black"
-        android:clickable="true"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/lib_overlay_panel"
-            android:layout_width="264dp"
-            android:layout_height="wrap_content"
-            android:background="@drawable/lcd_frame"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:padding="18dp">
-
-            <TextView
-                android:id="@+id/lib_overlay_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:text="READING LIBRARY"
-                android:textColor="@color/lcd_ink"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <ProgressBar
-                android:id="@+id/lib_overlay_bar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="16dp"
-                android:layout_marginTop="12dp"
-                android:progressDrawable="@drawable/lcd_progress" />
-
-            <TextView
-                android:id="@+id/lib_overlay_count"
-                style="@style/LcdSmall"
-                android:layout_marginTop="8dp"
-                android:textColor="@color/lcd_ink_dim" />
-        </LinearLayout>
-    </LinearLayout>
-
     <!-- Long-press task menu: the same overlay idiom - opaque chassis,
          one LCD panel - offering numbered functions for one track.
          Scrim tap and back both cancel. -->
@@ -206,5 +159,33 @@
                 android:layout_marginTop="10dp"
                 android:text="TAP: SELECT    ▼: CANCEL" />
         </LinearLayout>
+    </FrameLayout>
+
+    <!-- Storage overlay: the shared storage panel in the same idiom - opaque
+         chassis, one LCD panel, like a deck reporting a disc scan - while the
+         music volume is out of reach, and over this screen's own full
+         rebuild when there is nothing cached to show. Topmost, and eats
+         touches while visible; back leaves for home. -->
+    <FrameLayout
+        android:id="@+id/lib_storage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/chassis_black"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:id="@+id/lib_storage_frame"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginLeft="24dp"
+            android:layout_marginRight="24dp"
+            android:background="@drawable/lcd_frame"
+            android:padding="14dp">
+
+            <include layout="@layout/storage_panel" />
+        </FrameLayout>
     </FrameLayout>
 </FrameLayout>

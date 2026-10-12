@@ -146,121 +146,152 @@
             android:layout_marginBottom="7dp"
             android:background="@color/lcd_ink_dim" />
 
+        <!-- The now-playing lines, one group so the storage re-cut below can
+             take them off the glass whole; the lines inside keep their own
+             annunciator visibility. -->
         <LinearLayout
+            android:id="@+id/lcd_track_lines"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <!-- Title line: a long title scrolls back and forth across the
-                 glass (period MiniDisc-deck behaviour), never an ellipsis;
-                 static when it fits. It pans only while the screen is on. -->
-            <com.github.postapczuk.lalauncher.ScrollingLcdText
-                android:id="@+id/lcd_title"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Title line: a long title scrolls back and forth across
+                     the glass (period MiniDisc-deck behaviour), never an
+                     ellipsis; static when it fits. It pans only while the
+                     screen is on. -->
+                <com.github.postapczuk.lalauncher.ScrollingLcdText
+                    android:id="@+id/lcd_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="monospace"
+                    android:singleLine="true"
+                    android:text="DIGITAL AUDIO"
+                    android:textColor="@color/lcd_ink"
+                    android:textSize="23sp"
+                    android:textStyle="bold" />
+
+                <!-- PLAY/STOP are the proven font glyphs; PAUSE is drawn as
+                     two solid rectangles by the view itself (no 4.1 font
+                     gamble). -->
+                <com.github.postapczuk.lalauncher.TransportGlyphView
+                    android:id="@+id/lcd_glyph"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="8dp"
+                    android:fontFamily="monospace"
+                    android:text="■"
+                    android:textColor="@color/lcd_ink"
+                    android:textSize="23sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Artist segment: a fixed line like a hardware annunciator -
+                 it reserves its space and lights up only when the player
+                 has announced real metadata. -->
+            <TextView
+                android:id="@+id/lcd_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:fontFamily="monospace"
                 android:singleLine="true"
-                android:text="DIGITAL AUDIO"
-                android:textColor="@color/lcd_ink"
-                android:textSize="23sp"
-                android:textStyle="bold" />
-
-            <!-- PLAY/STOP are the proven font glyphs; PAUSE is drawn as two
-                 solid rectangles by the view itself (no 4.1 font gamble). -->
-            <com.github.postapczuk.lalauncher.TransportGlyphView
-                android:id="@+id/lcd_glyph"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:fontFamily="monospace"
-                android:text="■"
-                android:textColor="@color/lcd_ink"
-                android:textSize="23sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- Artist segment: a fixed line like a hardware annunciator - it
-             reserves its space and lights up only when the player has
-             announced real metadata. -->
-        <TextView
-            android:id="@+id/lcd_artist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:singleLine="true"
-            android:textColor="@color/lcd_ink_dim"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:visibility="invisible" />
-
-        <!-- Quality segment (B2) with the year and the inverted HR chip at
-             fixed annunciator positions; every element lights only when its
-             datum was actually read from the firmware. -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/lcd_quality"
-                style="@style/LcdSmall"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:singleLine="true"
-                android:visibility="invisible" />
-
-            <TextView
-                android:id="@+id/lcd_year"
-                style="@style/LcdSmall"
-                android:layout_marginLeft="8dp"
                 android:textColor="@color/lcd_ink_dim"
+                android:textSize="11sp"
+                android:textStyle="bold"
                 android:visibility="invisible" />
 
+            <!-- Quality segment (B2) with the year and the inverted HR chip
+                 at fixed annunciator positions; every element lights only
+                 when its datum was actually read from the firmware. -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/lcd_quality"
+                    style="@style/LcdSmall"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:singleLine="true"
+                    android:visibility="invisible" />
+
+                <TextView
+                    android:id="@+id/lcd_year"
+                    style="@style/LcdSmall"
+                    android:layout_marginLeft="8dp"
+                    android:textColor="@color/lcd_ink_dim"
+                    android:visibility="invisible" />
+
+                <TextView
+                    android:id="@+id/lcd_hr"
+                    style="@style/LcdSmall"
+                    android:layout_marginLeft="8dp"
+                    android:background="@color/lcd_ink"
+                    android:paddingLeft="4dp"
+                    android:paddingTop="1dp"
+                    android:paddingRight="4dp"
+                    android:paddingBottom="1dp"
+                    android:text="HR"
+                    android:textColor="@color/lcd_surface"
+                    android:visibility="invisible" />
+            </LinearLayout>
+
+            <!-- Time segment (B4): elapsed / total and TR x/y from the
+                 player's own counters; frozen on the glass when playback
+                 stops. -->
             <TextView
-                android:id="@+id/lcd_hr"
+                android:id="@+id/lcd_time"
                 style="@style/LcdSmall"
-                android:layout_marginLeft="8dp"
-                android:background="@color/lcd_ink"
-                android:paddingLeft="4dp"
-                android:paddingTop="1dp"
-                android:paddingRight="4dp"
-                android:paddingBottom="1dp"
-                android:text="HR"
-                android:textColor="@color/lcd_surface"
+                android:layout_width="match_parent"
+                android:layout_marginTop="3dp"
+                android:singleLine="true"
                 android:visibility="invisible" />
         </LinearLayout>
 
-        <!-- Time segment (B4): elapsed / total and TR x/y from the player's
-             own counters; frozen on the glass when playback stops. -->
-        <TextView
-            android:id="@+id/lcd_time"
-            style="@style/LcdSmall"
-            android:layout_width="match_parent"
-            android:layout_marginTop="3dp"
-            android:singleLine="true"
-            android:visibility="invisible" />
-
-        <!-- Art panel: the current track's dithered cover - four STN grey
-             tones - whenever its art is actually readable (B6); the
-             two-tone dithered plasma otherwise.
-             The panel is the flexible element - it absorbs whatever height
-             the app window really has (the firmware keeps Android's nav
-             bar: 480x782, not 480x854), so the soft-keys and latch below
-             can never be pushed off the glass. -->
-        <ImageView
-            android:id="@+id/lcd_panel"
+        <!-- The flexible element - it absorbs whatever height the app window
+             really has (the firmware keeps Android's nav bar: 480x782, not
+             480x854), so the soft-keys and latch below can never be pushed
+             off the glass. It holds one of two things:
+             the art panel - the current track's cover in the Artwork Style
+             whenever its art is actually readable (B6), the two-tone
+             dithered plasma otherwise;
+             or, whenever the music volume is out of reach (USB storage,
+             Sony's reindex after it, the post-USB library rebuild), the
+             storage panel. That re-cuts the glass in place, the way the
+             info window's CLOCK does: the track lines and both soft-keys
+             give way too, and only the status row and the PROGRAM INDEX
+             latch keep their places. -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="8dp"
-            android:layout_weight="1"
-            android:background="@drawable/lcd_panel_frame"
-            android:contentDescription="@null"
-            android:padding="1dp"
-            android:scaleType="fitXY" />
+            android:layout_weight="1">
+
+            <ImageView
+                android:id="@+id/lcd_panel"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/lcd_panel_frame"
+                android:contentDescription="@null"
+                android:padding="1dp"
+                android:scaleType="fitXY" />
+
+            <include
+                android:id="@+id/storage_panel"
+                layout="@layout/storage_panel"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/action_library"

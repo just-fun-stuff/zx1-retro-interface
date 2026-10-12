@@ -52,6 +52,11 @@ import java.util.Locale;
  * silently, and any action that cannot be performed exactly says so instead
  * of approximating - a Sony list whose tapped track has no platform match
  * refuses rather than playing something else.
+ *
+ * While the music volume is out of reach ({@link StorageState} not READY)
+ * the storage panel ({@link StoragePanel}) covers the screen - picker mode
+ * included - any open menu or name panel is dismissed, and back leaves the
+ * screen. Back at READY the level on screen is read again whole.
  */
 public class PlaylistsActivity extends Activity {
 
@@ -156,6 +161,17 @@ public class PlaylistsActivity extends Activity {
     private View inputView;
     private TextView inputTitle;
     private EditText inputField;
+    private View storageView;
+    private StoragePanel storagePanel;
+    /** The storage phase last applied is not READY (the overlay is up). */
+    private boolean storageBlocked;
+
+    private final StorageState.Listener storageListener = new StorageState.Listener() {
+        @Override
+        public void onStorageChanged(StorageState.Snapshot snapshot) {
+            applyStorage(snapshot);
+        }
+    };
 
     /** What the open task menu / input panel acts on. */
     private Runnable menuAction1;
@@ -187,6 +203,8 @@ public class PlaylistsActivity extends Activity {
         inputView = findViewById(R.id.pl_input);
         inputTitle = (TextView) findViewById(R.id.pl_input_title);
         inputField = (EditText) findViewById(R.id.pl_input_field);
+        storageView = findViewById(R.id.pl_storage);
+        storagePanel = new StoragePanel(findViewById(R.id.storage_panel), skin);
 
         adapter = new RowAdapter();
         listView.setAdapter(adapter);
@@ -259,13 +277,24 @@ public class PlaylistsActivity extends Activity {
             // re-inflate is posted.
             return;
         }
-        if (firstResumeDone && workerThread != null) {
+        // The storage phase first: while it blocks nothing is re-read, and a
+        // return to READY reloads the level itself.
+        boolean wasBlocked = storageBlocked;
+        StorageState.addListener(storageListener);
+        applyStorage(StorageState.current(this));
+        if (firstResumeDone && workerThread != null && !wasBlocked && !storageBlocked) {
             // Counts and members can change from the library picker or the
             // media scanner while this screen sits paused; the first resume
             // is already covered by the read onCreate started.
             refreshCurrentLevel();
         }
         firstResumeDone = true;
+    }
+
+    @Override
+    protected void onPause() {
+        StorageState.removeListener(storageListener);
+        super.onPause();
     }
 
     @Override
@@ -281,6 +310,14 @@ public class PlaylistsActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (storageBlocked) {
+            // Nothing under the overlay can be used until the music is
+            // back: back leaves the screen rather than stepping through
+            // levels the user cannot see.
+            finish();
+            overridePendingTransition(android.R.anim.fade_in, R.anim.slide_down);
+            return;
+        }
         if (inputView.getVisibility() == View.VISIBLE) {
             hideInput();
             return;
@@ -334,11 +371,48 @@ public class PlaylistsActivity extends Activity {
         skin.tintSearch(inputField);
         tintKey((TextView) findViewById(R.id.pl_input_save));
         tintKey((TextView) findViewById(R.id.pl_input_cancel));
+        storageView.setBackgroundColor(skin.chassis);
+        findViewById(R.id.pl_storage_frame).setBackground(skin.frameBackground());
     }
 
     private void tintKey(TextView key) {
         key.setBackground(skin.softKeyBackground());
         key.setTextColor(skin.softKeyText());
+    }
+
+    // --------------------------------------------------------------- storage
+
+    /**
+     * The storage phase. Leaving READY dismisses whatever panel is open -
+     * nothing under the overlay may be acted on - and puts the overlay up
+     * with that phase. Returning to READY takes it down and reads the level
+     * on screen again, since lists, counts and members may all have changed
+     * while the music was out of reach.
+     */
+    private void applyStorage(StorageState.Snapshot snapshot) {
+        boolean wasBlocked = storageBlocked;
+        storageBlocked = snapshot.phase != StorageState.Phase.READY;
+        if (storageBlocked) {
+            if (!wasBlocked) {
+                if (inputView.getVisibility() == View.VISIBLE) {
+                    hideInput();
+                }
+                hideMenu();
+            }
+            storagePanel.render(snapshot);
+            storageView.setVisibility(View.VISIBLE);
+            return;
+        }
+        storageView.setVisibility(View.GONE);
+        if (!wasBlocked) {
+            return;
+        }
+        if (openSony != null) {
+            // refreshCurrentLevel leaves a Sony list as it is; reopen it.
+            openSonyList(openSony);
+        } else {
+            refreshCurrentLevel();
+        }
     }
 
     // ------------------------------------------------------------- the reads

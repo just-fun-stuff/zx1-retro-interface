@@ -7,6 +7,7 @@
 package com.github.postapczuk.lalauncher;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.Uri;
@@ -20,11 +21,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -58,11 +59,18 @@ import java.util.Locale;
  * Data comes from {@link LibraryStore}: an in-memory snapshot (pre-warmed
  * by home) or the disk cache renders instantly; the provider is then only
  * asked for a cheap id fingerprint to decide whether a background rebuild
- * is needed. A full rebuild shows an LCD-styled overlay with a real
- * progress bar only when there is nothing cached to display. Sony's scan
- * windows (power-on, USB disconnect) leave the provider unreadable and
- * never invalidate the cache - the rebuild happens after their scan has
- * finished and the fingerprint actually differs.
+ * is needed. A full rebuild shows the storage panel ({@link StoragePanel})
+ * as an overlay with a real progress bar only when there is nothing cached
+ * to display. Sony's scan windows (power-on, USB disconnect) leave the
+ * provider unreadable and never invalidate the cache - the rebuild happens
+ * after their scan has finished and the fingerprint actually differs.
+ *
+ * While the music volume is out of reach ({@link StorageState} not READY:
+ * USB storage, Sony's reindex after it, the refresh service's rebuild) the
+ * same overlay shows that phase instead, the browser's own checks and
+ * rebuilds stand down, and back leaves for home. Back at READY the screen
+ * takes the process-wide snapshot the refresh service left and re-resolves
+ * its whole navigation stack against it through the position memory.
  */
 public class MusicLibraryActivity extends Activity {
 
@@ -185,9 +193,13 @@ public class MusicLibraryActivity extends Activity {
     private TextView statusView;
     private TextView hintView;
     private TextView backView;
-    private View overlayView;
-    private ProgressBar overlayBar;
-    private TextView overlayText;
+    private View storageView;
+    private StoragePanel storagePanel;
+    /** The storage phase as last heard; anything but READY blocks the screen. */
+    private StorageState.Snapshot storage;
+    private boolean storageBlocked;
+    /** The nothing-cached rebuild's progress while it holds the overlay. */
+    private StorageState.Snapshot rebuildShown;
     private View menuView;
     private TextView menuTitle;
     private TextView menuSub;
@@ -227,6 +239,13 @@ public class MusicLibraryActivity extends Activity {
         }
     };
 
+    private final StorageState.Listener storageListener = new StorageState.Listener() {
+        @Override
+        public void onStorageChanged(StorageState.Snapshot snapshot) {
+            applyStorage(snapshot);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -241,9 +260,8 @@ public class MusicLibraryActivity extends Activity {
         statusView = (TextView) findViewById(R.id.lib_status);
         hintView = (TextView) findViewById(R.id.lib_hint);
         backView = (TextView) findViewById(R.id.lib_back);
-        overlayView = findViewById(R.id.lib_overlay);
-        overlayBar = (ProgressBar) findViewById(R.id.lib_overlay_bar);
-        overlayText = (TextView) findViewById(R.id.lib_overlay_count);
+        storageView = findViewById(R.id.lib_storage);
+        storagePanel = new StoragePanel(findViewById(R.id.storage_panel), skin);
 
         adapter = new RowAdapter();
         listView.setAdapter(adapter);
@@ -322,7 +340,12 @@ public class MusicLibraryActivity extends Activity {
         }
         getContentResolver().registerContentObserver(
                 SonyWalkmanContract.GENIE_AUDIO_URI, true, genieObserver);
-        if (firstResumeDone) {
+        // The storage phase first: while it blocks nothing is checked, and
+        // a return to READY re-resolves and checks freshness itself.
+        boolean wasBlocked = storageBlocked;
+        StorageState.addListener(storageListener);
+        applyStorage(StorageState.current(this));
+        if (firstResumeDone && !wasBlocked && !storageBlocked) {
             // Coming back from the background (home key, then the soft-key
             // again): a USB copy plus Sony's rescan may have happened while
             // paused, and Genie's notifyChange is unverified - ask once.
@@ -338,6 +361,7 @@ public class MusicLibraryActivity extends Activity {
     @Override
     protected void onPause() {
         saveNavState();
+        StorageState.removeListener(storageListener);
         getContentResolver().unregisterContentObserver(genieObserver);
         freshnessHandler.removeCallbacks(freshnessRunnable);
         super.onPause();
@@ -356,6 +380,14 @@ public class MusicLibraryActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (storageBlocked) {
+            // Nothing under the overlay can be browsed until the music is
+            // back: back leaves for home instead of stepping through levels
+            // the user cannot see. The place is kept (onPause snapshots it).
+            finish();
+            overridePendingTransition(android.R.anim.fade_in, R.anim.slide_down);
+            return;
+        }
         if (menuView.getVisibility() == View.VISIBLE) {
             hideTaskMenu();
             return;
@@ -381,11 +413,8 @@ public class MusicLibraryActivity extends Activity {
         skin.tintSearch(searchView);
         skin.tintList(listView);
         hintView.setTextColor(skin.ink);
-        overlayView.setBackgroundColor(skin.chassis);
-        findViewById(R.id.lib_overlay_panel).setBackground(skin.frameBackground());
-        ((TextView) findViewById(R.id.lib_overlay_title)).setTextColor(skin.ink);
-        overlayText.setTextColor(skin.inkDim);
-        skin.tintProgressBar(overlayBar);
+        storageView.setBackgroundColor(skin.chassis);
+        findViewById(R.id.lib_storage_frame).setBackground(skin.frameBackground());
         menuView.setBackgroundColor(skin.chassis);
         findViewById(R.id.lib_menu_panel).setBackground(skin.frameBackground());
         menuTitle.setTextColor(skin.ink);
@@ -438,7 +467,7 @@ public class MusicLibraryActivity extends Activity {
     }
 
     private void checkFreshness() {
-        if (worker == null || rebuildRunning) {
+        if (worker == null || rebuildRunning || storageBlocked) {
             return;
         }
         worker.post(new Runnable() {
@@ -463,10 +492,12 @@ public class MusicLibraryActivity extends Activity {
      * 0 means the provider is unreadable or empty - Sony's rescan window -
      * so the cache is kept and the check retries; a real, different
      * fingerprint triggers the rebuild (with the overlay only when there
-     * is nothing on screen to keep using).
+     * is nothing on screen to keep using). A read that lands while the
+     * music is out of reach is dropped: the provider cannot be trusted
+     * then, and the return to READY checks again.
      */
     private void handleFingerprint(long fingerprint) {
-        if (rebuildRunning) {
+        if (rebuildRunning || storageBlocked) {
             return;
         }
         if (fingerprint == 0) {
@@ -496,16 +527,15 @@ public class MusicLibraryActivity extends Activity {
         }
         rebuildRunning = true;
         if (showOverlay) {
-            overlayBar.setProgress(0);
-            overlayText.setText("");
-            overlayView.setVisibility(View.VISIBLE);
+            rebuildShown = StorageState.Snapshot.updating(0, 0);
+            renderOverlay();
         }
         refreshCurrentLevel();
         worker.post(new Runnable() {
             @Override
             public void run() {
                 final LibraryStore.Library rebuilt = LibraryStore.rebuild(
-                        MusicLibraryActivity.this, overlayProgress);
+                        MusicLibraryActivity.this, rebuildProgress);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -514,7 +544,8 @@ public class MusicLibraryActivity extends Activity {
                         }
                         rebuildRunning = false;
                         loadSettled = true;
-                        overlayView.setVisibility(View.GONE);
+                        rebuildShown = null;
+                        renderOverlay();
                         onRebuilt(rebuilt);
                     }
                 });
@@ -522,18 +553,18 @@ public class MusicLibraryActivity extends Activity {
         });
     }
 
-    private final LibraryStore.Progress overlayProgress = new LibraryStore.Progress() {
+    /** Feeds the overlay only for the rebuild that holds it. */
+    private final LibraryStore.Progress rebuildProgress = new LibraryStore.Progress() {
         @Override
         public void onProgress(final int done, final int total) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (overlayView.getVisibility() != View.VISIBLE) {
+                    if (rebuildShown == null) {
                         return;
                     }
-                    overlayBar.setMax(total);
-                    overlayBar.setProgress(done);
-                    overlayText.setText(String.format(Locale.US, "%d / %d", done, total));
+                    rebuildShown = StorageState.Snapshot.updating(done, total);
+                    renderOverlay();
                 }
             });
         }
@@ -565,6 +596,80 @@ public class MusicLibraryActivity extends Activity {
         statusView.setText(statusLine(currentFrame()));
         if (currentFrame().level == LEVEL_ROOT) {
             rebuildRows();
+        }
+    }
+
+    // --------------------------------------------------------------- storage
+
+    /**
+     * The storage phase. Leaving READY puts the overlay up with that phase,
+     * closes the task menu and the keyboard - nothing under the overlay may
+     * be acted on - and stands the browser's own checks down (the guards in
+     * {@link #checkFreshness} and {@link #handleFingerprint}). Returning to
+     * READY hands over to {@link #onStorageReady}.
+     */
+    private void applyStorage(StorageState.Snapshot snapshot) {
+        boolean wasBlocked = storageBlocked;
+        storage = snapshot;
+        storageBlocked = snapshot.phase != StorageState.Phase.READY;
+        if (storageBlocked && !wasBlocked) {
+            hideTaskMenu();
+            hideKeyboard();
+            freshnessHandler.removeCallbacks(freshnessRunnable);
+        }
+        renderOverlay();
+        if (wasBlocked && !storageBlocked) {
+            onStorageReady();
+        }
+    }
+
+    /**
+     * One overlay, two owners: the storage phase while the music is out of
+     * reach, otherwise this screen's own nothing-cached rebuild.
+     */
+    private void renderOverlay() {
+        StorageState.Snapshot shown = storageBlocked ? storage : rebuildShown;
+        if (shown == null) {
+            storageView.setVisibility(View.GONE);
+            return;
+        }
+        storagePanel.render(shown);
+        storageView.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Back at READY after the music was out of reach. The refresh service
+     * has had its pass at the library meanwhile, so the screen takes the
+     * process-wide snapshot as it now stands and re-resolves the whole
+     * navigation stack against it through the position memory - a level
+     * that no longer resolves truncates to its parent - then resumes the
+     * normal freshness check, which also covers a pass that gave up (and a
+     * cold memory: bootstrap loads the disk cache first, and the deferred
+     * restore runs there).
+     */
+    private void onStorageReady() {
+        saveNavState();
+        LibraryStore.Library fresh = LibraryStore.peek();
+        if (fresh != null) {
+            library = fresh;
+            pendingLibrary = null;
+            loadSettled = true;
+        }
+        while (stack.size() > 1) {
+            stack.remove(stack.size() - 1);
+        }
+        restorePending = false;
+        if (!restoreNavState()) {
+            rebuildLevel();
+        }
+        bootstrap();
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager keyboard = (InputMethodManager)
+                getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (keyboard != null) {
+            keyboard.hideSoftInputFromWindow(searchView.getWindowToken(), 0);
         }
     }
 

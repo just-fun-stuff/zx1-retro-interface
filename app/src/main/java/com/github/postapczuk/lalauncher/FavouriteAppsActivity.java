@@ -88,6 +88,15 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     private View infoWindowView;
     private View spectrumBarsView;
     private TextView windowClockView;
+    // The glass that gives way while the music volume is out of reach, and
+    // the storage panel that takes its place.
+    private View trackLinesView;
+    private View libraryKeyView;
+    private View playlistsKeyView;
+    private View storagePanelView;
+    private StoragePanel storagePanel;
+    /** The storage phase last applied is not READY (the panel holds the glass). */
+    private boolean storageBlocked;
     // The offline-envelope spectrum (B7b): the renderer replaying stored
     // analysis at the playhead, and the per-track analysis-request dedup.
     private SpectrumController spectrum;
@@ -159,6 +168,13 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         }
     };
 
+    private final StorageState.Listener storageListener = new StorageState.Listener() {
+        @Override
+        public void onStorageChanged(StorageState.Snapshot snapshot) {
+            applyStorage(snapshot);
+        }
+    };
+
     /**
      * ACTION_HEADSET_PLUG is sticky, so registration delivers the current
      * jack state immediately - the footer always reports the real route.
@@ -215,6 +231,11 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         windowClockView = (TextView) findViewById(R.id.window_clock);
         spectrum = new SpectrumController(this, (ViewGroup) spectrumBarsView,
                 getResources().getDisplayMetrics().density);
+        trackLinesView = findViewById(R.id.lcd_track_lines);
+        libraryKeyView = findViewById(R.id.action_library);
+        playlistsKeyView = findViewById(R.id.action_playlists);
+        storagePanelView = findViewById(R.id.storage_panel);
+        storagePanel = new StoragePanel(storagePanelView, skin);
 
         int[] controls = {R.id.action_library, R.id.action_playlists, R.id.action_apps};
         for (int control : controls) {
@@ -270,7 +291,10 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
             applyInfoWindow();
         }
         resumed = true;
-        lcdTitleView.setActive(true);
+        // The storage phase first: it decides whether the now-playing glass
+        // (and with it the title glide and the plasma) is there at all.
+        StorageState.addListener(storageListener);
+        applyStorage(StorageState.current(this));
         spectrum.setActive(infoMode == LauncherSettings.INFO_SPECTRUM);
         clockHandler.removeCallbacks(clockTick);
         clockHandler.post(clockTick);
@@ -291,6 +315,7 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     @Override
     protected void onPause() {
         resumed = false;
+        StorageState.removeListener(storageListener);
         lcdTitleView.setActive(false);
         spectrum.setActive(false);
         clockHandler.removeCallbacks(clockTick);
@@ -416,7 +441,50 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         }
     }
 
-    /** Artwork style changed: covers rendered under the old one are stale. */
+    /**
+     * The storage phase ({@link StorageState}). Anything but READY re-cuts
+     * the glass in place, the way the info window's CLOCK does: the status
+     * row and the PROGRAM INDEX latch stay, and everything between them -
+     * the track lines, the art panel, both soft-keys - gives way to the
+     * storage panel, since none of it can be honest or useful while the
+     * music is out of reach. The title glide and the plasma stop with the
+     * glass they animate. Back at READY the cover cache is flushed - a
+     * cover that read as absent while the volume was gone may be readable
+     * now - and the now-playing glass returns.
+     */
+    private void applyStorage(StorageState.Snapshot snapshot) {
+        boolean blocked = snapshot.phase != StorageState.Phase.READY;
+        if (blocked) {
+            storagePanel.render(snapshot);
+        }
+        if (blocked != storageBlocked) {
+            storageBlocked = blocked;
+            int glass = blocked ? View.GONE : View.VISIBLE;
+            trackLinesView.setVisibility(glass);
+            panelView.setVisibility(glass);
+            libraryKeyView.setVisibility(glass);
+            playlistsKeyView.setVisibility(glass);
+            storagePanelView.setVisibility(blocked ? View.VISIBLE : View.GONE);
+            if (blocked) {
+                stopPlasma();
+                // The analyzer yields a running pass when storage goes away
+                // (partial kept, nothing marked failed), so forget the last
+                // request - as CLOCK does - and the playing track is asked
+                // for again on the first PLAY poll once the music is back.
+                spectrumRequestedId = 0;
+                spectrumRequestedDuration = 0;
+            } else {
+                flushArtCache();
+                renderPlaybackState();
+            }
+        }
+        lcdTitleView.setActive(resumed && !storageBlocked);
+    }
+
+    /**
+     * Covers rendered so far are stale: the artwork style changed, or the
+     * music volume is back after a stretch out of reach.
+     */
     private void flushArtCache() {
         artGeneration++;
         for (int slot = 0; slot < artCacheIds.length; slot++) {
@@ -534,16 +602,17 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     /**
      * One analysis request per played track: skipped entirely while the
      * info window is the CLOCK (the spectrum is off, so no background
-     * analysis either), and for keys that already failed this boot or
+     * analysis either) or the music volume is out of reach (the service
+     * would refuse it), and for keys that already failed this boot or
      * envelopes known complete. The service re-checks all of it - this
      * gate only keeps the ~1 s poll from re-sending intents. (Every codec
      * is requested since phase 2: ALAC and hi-res FLAC decode through the
      * hand-written path.)
      */
     private void maybeRequestAnalysis(MediaServiceClient.Track track) {
-        if (infoMode != LauncherSettings.INFO_SPECTRUM) {
-            // Forget the last request so switching back to SPECTRUM
-            // re-asks for the track playing right then.
+        if (infoMode != LauncherSettings.INFO_SPECTRUM || storageBlocked) {
+            // Forget the last request so switching back to SPECTRUM - or
+            // the music coming back - re-asks for the track playing then.
             spectrumRequestedId = 0;
             spectrumRequestedDuration = 0;
             return;
@@ -585,8 +654,9 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         }
     }
 
+    /** Only while resumed and the art panel is on the glass at all. */
     private void startPlasma() {
-        if (!resumed || plasmaRunning) {
+        if (!resumed || plasmaRunning || storageBlocked) {
             return;
         }
         plasmaRunning = true;
@@ -764,7 +834,8 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
      * The idle art panel: a two-tone plasma, ordered-dithered with the same
      * Bayer 4x4 matrix the panel raster uses (B6). It is decoration generated
      * on-device, not data, so the honesty rule is untouched. Runs only while
-     * this activity is resumed and no real cover holds the panel.
+     * this activity is resumed, the art panel is on the glass (not given
+     * way to the storage panel), and no real cover holds it.
      */
     private void initPlasmaPanel() {
         panelBitmap = Bitmap.createBitmap(PANEL_W, PANEL_H, Bitmap.Config.ARGB_8888);

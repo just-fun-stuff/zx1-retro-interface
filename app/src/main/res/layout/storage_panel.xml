@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The storage panel: what the glass shows while the music volume is out
+     of reach - USB storage, Sony's reindex after it, the launcher's own
+     library rebuild. One layout for all three screens, so they can never
+     word the same moment differently; StoragePanel fills it from one
+     StorageState snapshot, and nothing on it animates.
+     Home cuts it into its glass in place of the now-playing lines, at full
+     height: the spacer then drops the key to where the soft-keys sit. The
+     browsers set it in their overlay panel at its own height, where the
+     spacer (a Space, which measures to nothing unless given exact room)
+     collapses and the key follows the lines. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/storage_panel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/storage_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:singleLine="true"
+        android:textColor="@color/lcd_ink"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/storage_line1"
+        style="@style/LcdSmall"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:singleLine="true" />
+
+    <TextView
+        android:id="@+id/storage_line2"
+        style="@style/LcdSmall"
+        android:layout_width="match_parent"
+        android:layout_marginTop="3dp"
+        android:singleLine="true" />
+
+    <ProgressBar
+        android:id="@+id/storage_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginTop="12dp"
+        android:progressDrawable="@drawable/lcd_progress" />
+
+    <TextView
+        android:id="@+id/storage_count"
+        style="@style/LcdSmall"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/lcd_ink_dim" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:id="@+id/storage_key"
+        style="@style/LcdSoftKey"
+        android:layout_marginTop="12dp" />
+</LinearLayout>

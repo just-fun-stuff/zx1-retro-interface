@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- PLAYLISTS (C2): the launcher's own lists and Sony's read-only ones, in
      the library browser's mechanism - chassis header, one glass list, a
-     function key inside the glass. The two overlays are the same idiom as
+     function key inside the glass. The three overlays are the same idiom as
      the library's task menu: opaque chassis, one LCD panel. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/pl_root"
@@ -209,5 +209,31 @@
                 android:layout_marginTop="4dp"
                 android:text="2  CANCEL" />
         </LinearLayout>
+    </FrameLayout>
+
+    <!-- Storage overlay: the shared storage panel in the same idiom, while
+         the music volume is out of reach. Topmost, and eats touches while
+         visible; back leaves the screen. -->
+    <FrameLayout
+        android:id="@+id/pl_storage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/chassis_black"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:id="@+id/pl_storage_frame"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginLeft="24dp"
+            android:layout_marginRight="24dp"
+            android:background="@drawable/lcd_frame"
+            android:padding="14dp">
+
+            <include layout="@layout/storage_panel" />
+        </FrameLayout>
     </FrameLayout>
 </FrameLayout>
