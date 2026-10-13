@@ -36,6 +36,11 @@ Summary of modifications (2026):
   envelope replayed in sync with the player's own clock, carrying
   original ALAC and FLAC decoders written from the published format
   specifications for the formats the firmware's Android media stack
-  cannot decode.
+  cannot decode;
+- added a storage readout for USB mass storage: home, the library and
+  the playlists say when the computer holds the music volume, offer a
+  key that ends USB storage, and show the firmware's reindex and the
+  launcher's library rebuild before the normal screens return, while
+  playback and playlist edits are refused until the volume is back.
 
 This independent project is not affiliated with or endorsed by Sony.

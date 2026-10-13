@@ -598,6 +598,82 @@ Open questions the current build is built to answer (all logged under
   engine is holding, since nothing could repair a descriptor whose rows
   no longer exist.
 
+## USB mass storage
+
+Plugging in the cable takes the music away from the player. The only USB
+function is `mass_storage,adb` (`sys.usb.config`; no MTP), and the music
+lives on one FAT volume, `/storage/sdcard0` (non-removable,
+`allowMassStorage=true`). Sony's system app `com.sony.walkman.automount`
+has a receiver on `UMS_CONNECTED` that waits for the volume to mount and
+then calls `StorageManager.enableUsbMassStorage()` (switchable in its
+exported `com.sony.walkman.settings.AUTOMOUNT_SETTINGS` activity). While
+the volume is shared, Android has it unmounted:
+`Environment.getExternalStorageState()` reads `shared` and nothing on it
+opens.
+
+**Ending it from the launcher.** The stock route is the "Turn off USB
+storage" notification, which opens SystemUI's `.usb.UsbStorageActivity`.
+That activity is **not exported** (no intent filter, no `exported`), and
+the launcher's fullscreen theme hides the notification anyway. The way in
+is the permission: on this firmware
+`android.permission.MOUNT_UNMOUNT_FILESYSTEMS` has protection level
+**dangerous** (`pm list permissions -f -g`), so a 4.1 app holds it from
+install, and it is the permission MountService checks before sharing or
+unsharing. The launcher calls the same hidden
+`StorageManager.disableUsbMassStorage()` the stock activity calls
+(`StorageState`), on a worker thread because vold takes 1–4 s. Automount
+only fires on the cable event, so the volume stays mounted afterwards
+with the cable still in.
+
+**Broadcast order** (MountService `sendStorageIntent`, all carrying
+`file:///storage/sdcard0`):
+
+- Into USB storage: `MEDIA_EJECT` → `MEDIA_UNMOUNTED` (×2) →
+  `MEDIA_SHARED`, about a second after Automount starts. The unmount is
+  forced: vold kills any process still holding a file open on the
+  volume, so the spectrum analyzer closes its file on `MEDIA_EJECT`.
+- Out of it: `MEDIA_UNSHARED` → `MEDIA_UNMOUNTED` → `MEDIA_CHECKING` →
+  `MEDIA_MOUNTED` (about 2 s) → the platform scan → `MEDIA_SCANNER_FINISHED`
+  about 2 minutes later for a 1309-track card with no changes.
+- Cable pulled while shared: MountService logs `Disabling UMS after cable
+  disconnect` and runs the same tail.
+- `UMS_CONNECTED` / `UMS_DISCONNECTED` (no data) track the cable.
+  `MEDIA_UNSHARED` is `@hide` in the SDK's `Intent` but is sent here.
+- The `volume shared <path> ums` lines in `dumpsys mount` are vold status
+  queries, not share commands.
+- `GenieMediaScannerService` crashes at every eject and ActivityManager
+  restarts it after 5 s. Harmless to the launcher.
+
+**Sony's reindex.** Genie's own scanner brackets each rescan with
+`com.sony.walkman.database.media.GenieMediaScannerService.ACTION_GENIE_MEDIA_SCANNER_STARTED`
+and `…_FINISHED`. Both are global broadcasts that any app can receive,
+with `file:///storage/sdcard0` as data. Two measured USB STORAGE OFF
+cycles (1309 tracks, nothing changed on the card), seconds from the
+unshare:
+
+| Event | Run 1 | Run 2 |
+|---|---|---|
+| `MEDIA_MOUNTED` | 3.7 | 2.7 |
+| Genie STARTED | 5.3 | 3.6 |
+| Genie FINISHED | 11.9 | 8.9 |
+| platform `MEDIA_SCANNER_FINISHED` | 35.9 | 25.8 |
+| launcher READY (fingerprint read) | 41.7 | 29.3 |
+
+Genie finished well before the platform scan both times. An earlier
+cycle the same day, shortly after boot, took about 2 minutes from the
+remount to the platform's FINISHED, so the platform scan, not Genie's,
+sets how long READING holds. Genie returns
+**0 rows** for the whole time the volume is shared or unmounted, and the
+full row count again within seconds of the remount, while its own scan
+is still running. With an unchanged card, stale rows and fresh ones look
+the same, so the post-USB refresh trusts no read until Genie's FINISHED
+(once it has heard STARTED) and the platform `MEDIA_SCANNER_FINISHED`
+have both arrived since the unshare.
+
+In testing, one tap that landed as the screen was dimming toward its
+timeout never reached the key (no click, no worker thread); the same tap
+on a lit screen worked.
+
 ## Album art
 
 Working source, proven across the library: **platform MediaStore

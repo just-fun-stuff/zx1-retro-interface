@@ -14,11 +14,12 @@ An unofficial Android HOME replacement for the Sony NW-ZX1 digital audio player 
 - **Playlist Manager** Create, rename, delete, add and remove tracks, and start playback from any row. Lists live in Android's media database. Sony's playlists are listed too, read-only.
 - **Draws a spectrum display.** An eight-bar spectrum that displays in sync with the music. We can't access Android's own visualizer system as Sony's audio path bypasses this. Instead a background service analyzes each track on its first play and the bars replay that analysis against the playhead. This is the same approach Sony's own visualizer takes. The launcher brings its own ALAC and hi-res FLAC decoders for the formats that the stock Android media stack can't read. These are only generated once and then stored. You can also swap this out for a clock in Settings
 - **Long title scrolling** This is a fun thing my old MiniDisc players used to do, so I brought it back here.
+- **USB Storage** Plugging in the cable hands the music over to your computer, so the player can't play anything. The screens say so and give you a key to turn USB storage off. Afterwards you can watch the library being re-read before everything comes back.
 - **Styles** Two visual styles (the "LCD-ish" default and an amber-on-black "Tube Amp" inspired style). Access it in the Settings screen using the gear icon in the Program Index. 
 - **Primitive App Launcher** A super primitive app launcher just in case.
 - No ads, no analytics, no network access.
 
-Permissions Used: `RECEIVE_BOOT_COMPLETED` to refresh the library cache after power-on, `READ_EXTERNAL_STORAGE` for the music files, and `WRITE_EXTERNAL_STORAGE` for the launcher's playlists in Android's media database.
+Permissions Used: `RECEIVE_BOOT_COMPLETED` to refresh the library cache after power-on, `READ_EXTERNAL_STORAGE` for the music files, `WRITE_EXTERNAL_STORAGE` for the launcher's playlists in Android's media database, and `MOUNT_UNMOUNT_FILESYSTEMS` for the key that turns USB storage off.
 
 ## What it doesn't do
 

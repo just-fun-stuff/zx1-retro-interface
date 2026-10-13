@@ -52,8 +52,29 @@ constraints live in CLAUDE.md.
   the browser: a manifest receiver for the storage/media-scan broadcasts
   and `BOOT_COMPLETED` starts a short-lived, self-stopping service —
   fingerprint check → rebuild → persist, on a bounded doubling backoff
-  while Sony's own rescan leaves the provider empty — so "UPDATING
-  LIBRARY" effectively never shows.
+  while Sony's own rescan leaves the provider empty — so the browser's
+  own "UPDATING LIBRARY" overlay effectively never shows. After a USB
+  storage session the same pass reports on screen instead (next item).
+- **USB storage gets its own glass.** Plugging the cable in makes Sony's
+  Automount share the music volume over USB mass storage, and the player
+  cannot play until that ends. `StorageState` is the one shared answer,
+  and every screen shows it through one `StoragePanel`: home re-cuts its
+  glass — the status row and PROGRAM INDEX latch stay, the track lines,
+  art panel and soft-keys give way — and the library and playlists put
+  up a blocking overlay that back leaves. **USB STORAGE** carries the
+  panel's one key, **USB STORAGE OFF**, which ends sharing through the
+  hidden `StorageManager.disableUsbMassStorage()` — possible because
+  `MOUNT_UNMOUNT_FILESYSTEMS` is protection level *dangerous* on this
+  firmware (the key reads NOT AVAILABLE if it is ever refused). Then
+  **READING STORAGE** holds, static, while Sony reindexes; **UPDATING
+  LIBRARY** shows real row counts while the cache rebuilds, when it
+  needs to; and the normal screens return, the library re-resolving its
+  saved place against the new snapshot. While the volume is unmounted,
+  playback handoff, queue-next and playlist edits refuse before any
+  binder call, and the analyzer neither starts nor marks tracks failed —
+  it closes its file on `MEDIA_EJECT`, because the forced unmount kills
+  any process holding a file open there. Power-on rescans stay silent.
+  Broadcast order and timings: firmware-findings.md "USB mass storage".
 - **PLAYLISTS is launcher-owned.** The soft-key opens the launcher's own
   screen; Sony's dashboard is not involved anywhere. Launcher playlists
   **are** platform MediaStore playlists (`PlaylistStore`), which makes
