@@ -47,8 +47,7 @@ public class StorageEventReceiver extends BroadcastReceiver {
         }
         if (SonyWalkmanContract.ACTION_GENIE_SCANNER_STARTED.equals(action)
                 || SonyWalkmanContract.ACTION_GENIE_SCANNER_FINISHED.equals(action)) {
-            // The device-side proof that Sony's indexer broadcasts globally,
-            // and whether it carries a data uri.
+            // The record of Sony's reindex window; its own logs say nothing.
             Log.i(TAG, "genie scanner "
                     + (SonyWalkmanContract.ACTION_GENIE_SCANNER_STARTED.equals(action)
                     ? "STARTED" : "FINISHED") + " (data " + intent.getData() + ")");

@@ -261,8 +261,8 @@ public class LibraryRefreshService extends Service {
      * can be trusted; null once it may read. The storage must be mounted
      * again, the platform scan must have finished since the latest
      * unshare, and a Genie scan heard starting since then must have
-     * finished too (if Sony's broadcasts never reach us, only the platform
-     * scan is waited for).
+     * finished too (Sony's broadcasts are global on this firmware; were they
+     * ever missing, only the platform scan would be waited for).
      */
     private static String postUsbWait() {
         if (!StorageState.musicAvailable()) {

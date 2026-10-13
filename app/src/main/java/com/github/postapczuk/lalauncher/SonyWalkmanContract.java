@@ -46,11 +46,11 @@ final class SonyWalkmanContract {
     /*
      * Sony's own Genie indexer (inside the player package) brackets a
      * library rescan with these two actions - the strings come from the
-     * player package itself. Whether they are broadcast system-wide, and
-     * whether they carry a data uri, was unverified when they were added:
-     * StorageEventReceiver listens both ways and logs each one it hears,
-     * and the post-USB refresh only waits on FINISHED once it has actually
-     * seen STARTED.
+     * player package itself. Device-verified: both are broadcast
+     * system-wide with the volume's uri ({@code file:///storage/sdcard0})
+     * as data, STARTED a few seconds after the remount, FINISHED before
+     * the platform scan's own. The post-USB refresh still only waits on
+     * FINISHED once it has actually heard STARTED.
      */
     static final String ACTION_GENIE_SCANNER_STARTED =
             "com.sony.walkman.database.media.GenieMediaScannerService"
