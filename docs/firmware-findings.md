@@ -959,6 +959,59 @@ care; single-shape backgrounds are safe (`GradientDrawable.getPadding`
 returns false without a `<padding>` tag, and `DrawableContainer` returns
 `(l|t|r|b) != 0`, i.e. false for all-zero children).
 
+## `setBackgroundColor` re-colors later inflations (API 16)
+
+Device-verified 2026-10-12 on firmware 1.13: after Settings > Style went
+TUBE AMP → LCD, the SETTINGS rows' dividers stayed amber (`tube_glow_dim`)
+on the green glass, and stayed amber until the process restarted.
+
+Jelly Bean's `View.setBackgroundColor` re-colors an existing `ColorDrawable`
+background in place:
+
+```java
+if (mBackground instanceof ColorDrawable) {
+    ((ColorDrawable) mBackground).setColor(color);
+}
+```
+
+4.3 put `.mutate()` into that line and gave `ColorDrawable` a `mutate()` to
+call; on 4.1 there is neither (read from the 4.1.1 and 4.1.2 AOSP sources),
+so the write lands in a state the view may not own. `Resources.loadDrawable`
+builds a `@color/…` background as `new ColorDrawable(value.data)` and caches
+that drawable's **live** state, weakly, keyed by the color *value* (not the
+resource id). Every later load of the same value is `newDrawable()`, which
+copies whatever the cached state holds at that moment. So the first view in
+the process to load a color — normally home, for `chassis_black`,
+`lcd_ink_dim`, `lcd_ink` (the HR chip) and `lcd_surface` (the spectrum bars)
+— owns the cache entry, and TUBE AMP's re-tint of that view rewrote it.
+
+Every view inflated afterwards copied the tube color, LCD screens included,
+and the LCD path rebuilds nothing to put it back. The poisoned entry lives
+as long as its drawable does, and each copy taken meanwhile keeps the wrong
+color for its view's lifetime. Reproduced on the device by starting the
+process in TUBE AMP and switching to LCD: the SETTINGS, home and library
+dividers (the `ListView` `android:divider`s included) read `#A06A22`, the
+spectrum bars `#F5A73B`, and the chassis `#000000` where `#0C0F0E` belongs.
+
+Starting in TUBE is the reliable trigger, because home creates the cache
+entries and tints them in the same breath. Inside one process, LCD → TUBE →
+LCD only poisons the cache when a GC collects the LCD home's drawables
+before the TUBE home inflates, so a clean pass there proves nothing on its
+own. `adb shell run-as <package> kill -10 <pid>` forces that GC on demand:
+Dalvik answers `SIGUSR1` with `SIGUSR1 forcing GC (no HPROF)`.
+
+**Fix:** `Skin.paint` — `setBackground(new ColorDrawable(color))` at every
+TUBE re-tint. A drawable built in code is never in the cache, so no re-tint
+can reach one that LCD will later inflate from. It is also safe against the
+padding trap in the previous section: `ColorDrawable` doesn't override
+`Drawable.getPadding`, which returns false, and the HR chip measures the
+same 30 px in both styles. Device-verified 2026-10-12 after a TUBE cold
+start and after an in-process round trip with a forced GC: every LCD screen
+reads `#4A584D` dividers, `#0C0F0E` chassis and `#AAB49D` spectrum bars,
+and TUBE AMP renders exactly as before. Any runtime re-color of an inflated
+drawable needs the same care — build a new one, never set a color on what
+inflate handed you.
+
 ## Misc verified facts
 
 - wm2 activity table exports `ACTION_START_TOP`, `ACTION_START_DASHBOARD`,

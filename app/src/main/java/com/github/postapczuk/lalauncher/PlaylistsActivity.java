@@ -349,7 +349,7 @@ public class PlaylistsActivity extends Activity {
         if (skin.isLcd()) {
             return;
         }
-        findViewById(R.id.pl_root).setBackgroundColor(skin.chassis);
+        Skin.paint(findViewById(R.id.pl_root), skin.chassis);
         skin.tintDrawerControl(backView);
         ((TextView) findViewById(R.id.pl_title_label)).setTextColor(skin.panelText);
         statusView.setTextColor(skin.panelDim);
@@ -358,20 +358,20 @@ public class PlaylistsActivity extends Activity {
         hintView.setTextColor(skin.ink);
         newKeyView.setBackground(skin.softKeyBackground());
         newKeyView.setTextColor(skin.softKeyText());
-        menuView.setBackgroundColor(skin.chassis);
+        Skin.paint(menuView, skin.chassis);
         findViewById(R.id.pl_menu_panel).setBackground(skin.frameBackground());
         menuTitle.setTextColor(skin.ink);
         menuSub.setTextColor(skin.inkDim);
         tintKey(menuKey1);
         tintKey(menuKey2);
         ((TextView) findViewById(R.id.pl_menu_hint)).setTextColor(skin.ink);
-        inputView.setBackgroundColor(skin.chassis);
+        Skin.paint(inputView, skin.chassis);
         findViewById(R.id.pl_input_panel).setBackground(skin.frameBackground());
         inputTitle.setTextColor(skin.ink);
         skin.tintSearch(inputField);
         tintKey((TextView) findViewById(R.id.pl_input_save));
         tintKey((TextView) findViewById(R.id.pl_input_cancel));
-        storageView.setBackgroundColor(skin.chassis);
+        Skin.paint(storageView, skin.chassis);
         findViewById(R.id.pl_storage_frame).setBackground(skin.frameBackground());
     }
 

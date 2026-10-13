@@ -405,7 +405,7 @@ public class MusicLibraryActivity extends Activity {
         if (skin.isLcd()) {
             return;
         }
-        findViewById(R.id.lib_root).setBackgroundColor(skin.chassis);
+        Skin.paint(findViewById(R.id.lib_root), skin.chassis);
         skin.tintDrawerControl(backView);
         ((TextView) findViewById(R.id.lib_title_label)).setTextColor(skin.panelText);
         statusView.setTextColor(skin.panelDim);
@@ -413,9 +413,9 @@ public class MusicLibraryActivity extends Activity {
         skin.tintSearch(searchView);
         skin.tintList(listView);
         hintView.setTextColor(skin.ink);
-        storageView.setBackgroundColor(skin.chassis);
+        Skin.paint(storageView, skin.chassis);
         findViewById(R.id.lib_storage_frame).setBackground(skin.frameBackground());
-        menuView.setBackgroundColor(skin.chassis);
+        Skin.paint(menuView, skin.chassis);
         findViewById(R.id.lib_menu_panel).setBackground(skin.frameBackground());
         menuTitle.setTextColor(skin.ink);
         menuSub.setTextColor(skin.inkDim);
@@ -1252,7 +1252,7 @@ public class MusicLibraryActivity extends Activity {
                 ((TextView) row.findViewById(R.id.lib_row_title)).setTextColor(skin.ink);
                 ((TextView) row.findViewById(R.id.lib_row_sub)).setTextColor(skin.inkDim);
                 TextView chip = (TextView) row.findViewById(R.id.lib_row_hr);
-                chip.setBackgroundColor(skin.ink);
+                Skin.paint(chip, skin.ink);
                 chip.setTextColor(skin.glass);
                 ((TextView) row.findViewById(R.id.lib_row_right)).setTextColor(skin.inkDim);
             }

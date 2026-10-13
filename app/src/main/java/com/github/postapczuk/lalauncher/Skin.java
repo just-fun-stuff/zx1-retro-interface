@@ -19,6 +19,7 @@ import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -287,6 +288,29 @@ final class Skin {
     }
 
     // ---------------------------------------------------- shared view tints
+
+    /**
+     * Gives a view a flat background color - the only way a re-tint may.
+     *
+     * <p>Never {@code View.setBackgroundColor}: on API 16 it writes the
+     * color straight into the existing background,
+     * {@code ((ColorDrawable) mBackground).setColor(color)}, with none of
+     * the {@code mutate()} that 4.3 added. A {@code @color/...} background
+     * is not the view's own to write into. {@code Resources} caches the
+     * live state of the first ColorDrawable it loads for a color value, and
+     * every later inflation of that value copies whatever the state then
+     * holds - so a TUBE AMP re-tint that lands on that first drawable
+     * (normally home's) re-colors every screen inflated afterwards, the LCD
+     * ones included, and LCD rebuilds nothing to put it back. A new
+     * drawable has no cache behind it. It also reports no padding
+     * ({@code Drawable.getPadding} returns false and ColorDrawable keeps
+     * that), so unlike {@link Frame} it leaves the layout's padding alone.
+     * See docs/firmware-findings.md, "setBackgroundColor re-colors later
+     * inflations".
+     */
+    static void paint(View view, int color) {
+        view.setBackground(new ColorDrawable(color));
+    }
 
     /** Re-skins a full-screen list (divider, press flash, scroll cache). */
     void tintList(ListView list) {

@@ -385,25 +385,25 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         if (skin.isLcd()) {
             return;
         }
-        findViewById(R.id.home_root).setBackgroundColor(skin.chassis);
+        Skin.paint(findViewById(R.id.home_root), skin.chassis);
         ((TextView) findViewById(R.id.brand_mark)).setTextColor(skin.panelText);
         ((TextView) findViewById(R.id.brand_line1)).setTextColor(skin.panelText);
         ((TextView) findViewById(R.id.brand_line2)).setTextColor(skin.panelDim);
         ViewGroup bars = (ViewGroup) spectrumBarsView;
         for (int i = 0; i < bars.getChildCount(); i++) {
-            bars.getChildAt(i).setBackgroundColor(skin.ink);
+            Skin.paint(bars.getChildAt(i), skin.ink);
         }
         findViewById(R.id.lcd_zone).setBackground(skin.frameBackground());
         lcdStateView.setTextColor(skin.ink);
         batteryView.setTextColor(skin.ink);
         clockView.setTextColor(skin.ink);
-        findViewById(R.id.lcd_divider).setBackgroundColor(skin.inkDim);
+        Skin.paint(findViewById(R.id.lcd_divider), skin.inkDim);
         lcdTitleView.setTextColor(skin.ink);
         lcdGlyphView.setTextColor(skin.ink);
         lcdArtistView.setTextColor(skin.inkDim);
         lcdQualityView.setTextColor(skin.ink);
         lcdYearView.setTextColor(skin.inkDim);
-        lcdHrView.setBackgroundColor(skin.ink);
+        Skin.paint(lcdHrView, skin.ink);
         lcdHrView.setTextColor(skin.glass);
         lcdTimeView.setTextColor(skin.ink);
         panelView.setBackground(skin.panelFrame());

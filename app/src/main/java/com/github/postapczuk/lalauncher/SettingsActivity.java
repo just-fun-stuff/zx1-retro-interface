@@ -121,7 +121,7 @@ public class SettingsActivity extends Activity {
         if (skin.isLcd()) {
             return;
         }
-        findViewById(R.id.settings_root).setBackgroundColor(skin.chassis);
+        Skin.paint(findViewById(R.id.settings_root), skin.chassis);
         skin.tintDrawerControl((TextView) findViewById(R.id.settings_back));
         ((TextView) findViewById(R.id.settings_title)).setTextColor(skin.panelText);
         ((TextView) findViewById(R.id.settings_subtitle)).setTextColor(skin.panelDim);
@@ -132,7 +132,7 @@ public class SettingsActivity extends Activity {
             if (child instanceof LinearLayout) {
                 tintRow((LinearLayout) child);
             } else if (child.getBackground() instanceof ColorDrawable) {
-                child.setBackgroundColor(skin.inkDim);
+                Skin.paint(child, skin.inkDim);
             }
         }
         ((TextView) findViewById(R.id.settings_hint)).setTextColor(skin.ink);

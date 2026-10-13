@@ -107,7 +107,7 @@ public class InstalledAppsActivity extends Activity {
         if (skin.isLcd()) {
             return;
         }
-        findViewById(R.id.program_root).setBackgroundColor(skin.chassis);
+        Skin.paint(findViewById(R.id.program_root), skin.chassis);
         skin.tintDrawerControl((TextView) findViewById(R.id.action_home));
         ((TextView) findViewById(R.id.program_title)).setTextColor(skin.panelText);
         ((TextView) findViewById(R.id.program_count)).setTextColor(skin.panelDim);
