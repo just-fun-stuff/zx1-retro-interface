@@ -10,6 +10,7 @@ An unofficial Android HOME replacement for the Sony NW-ZX1 digital audio player 
 
 - **Displays the current track on the home screen.** Title and artist, codec / sample rate / bit depth / bitrate / channels with an HR mark on hi-res files, release year, elapsed and total time, queue position, and the player's PLAY / PAUSE / STOP state. The firmware doesn't announce any of this, so the launcher reads it about once a second from the Sony player's own service binder and media database.
 - **Renders album art in the style of an old LCD.** The current track's cover in smooth greyscale by default, with a four-tone dither and full color as options in Settings. Tracks without readable art get a generated two-tone plasma animation.
+- **Hidden track scrub** While a track is playing or paused, hold the album art until a strip shows up along the bottom, slide left or right, and let go. The player jumps to that spot. Nothing shows until you hold it, so it stays out of the way.
 - **Music Library browsing interface** Playlists, artists, albums, and songs as flat alphabetical lists with search. The launcher keeps its own cache of the firmware's media database, so the browser opens instantly and keeps working through Sony's rescans. Tap a track to play. The browser remembers where you were. Hold a track to append it to the current queue or add it to a playlist.
 - **Playlist Manager** Create, rename, delete, add and remove tracks, and start playback from any row. Lists live in Android's media database. Sony's playlists are listed too, read-only.
 - **Draws a spectrum display.** An eight-bar spectrum that displays in sync with the music. We can't access Android's own visualizer system as Sony's audio path bypasses this. Instead a background service analyzes each track on its first play and the bars replay that analysis against the playhead. This is the same approach Sony's own visualizer takes. The launcher brings its own ALAC and hi-res FLAC decoders for the formats that the stock Android media stack can't read. These are only generated once and then stored. You can also swap this out for a clock in Settings
@@ -26,7 +27,7 @@ Permissions Used: `RECEIVE_BOOT_COMPLETED` to refresh the library cache after po
 I think ZX1 works better as a music player than as a small phone/android handheld, so a lot of standard launcher features just aren't built:
 
 - No widgets, wallpapers, folders, or home-screen customization. Home is the now-playing screen; everything else lives in the program index.
-- No on-screen playback, volume, or hold controls. The ZX1's physical keys already do this, and they work with the screen off.
+- No on-screen playback, volume, or hold controls, apart from the hidden track scrub. The ZX1's physical keys already do this, and they work with the screen off.
 - No EQ or sound settings of its own — Sony's Sound Enhancement app does that.
 - Nothing that isn't about playing music.
 

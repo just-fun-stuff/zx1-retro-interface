@@ -14,6 +14,15 @@ constraints live in CLAUDE.md.
   PLAY/PAUSE/STOP (the pause glyph is two drawn rectangles — no 4.1 font
   gamble), the cover or the generated plasma in the art panel, battery/
   clock/output-route status, and a gliding title line for long titles.
+  The art panel hides a track scrub (`TrackScrubView`): hold it and a
+  position strip rises along its foot, slide to a point, lift, and one
+  seek moves the player there — one write per gesture, never live,
+  because an unanswered write wedges Sony's write path until reboot. The
+  strip shows the finger's target only until the seek is answered, then
+  the player's own polled position (or NOT AVAILABLE), and it is
+  never offered when it could only fail. Device-proven on Sony's own
+  lists and the launcher's, from PLAY and from PAUSE, at 240–325 ms a
+  seek (firmware-findings.md "Seek from home").
 - **SETTINGS** behind a drawn gear on the program index header — the
   interface's one sanctioned icon. Three numbered rows, each tap cycling
   a persisted value (`LauncherSettings`), every screen reconciling on
@@ -122,7 +131,10 @@ constraints live in CLAUDE.md.
 ## Deliberately cut
 
 No games, extras, or calendars. No on-launcher EQ — the SOUND path owns
-that. No volume UI — the ZX1 has hardware keys. No on-screen transport.
+that. No volume UI — the ZX1 has hardware keys. No on-screen transport:
+play, pause and skip stay on the keys. The hidden scrub is the one
+exception, allowed because it adds a jump to a chosen point in the track
+rather than repeating a key, and puts nothing on the glass until held.
 No queue editing beyond what the playlists screen defines. No datum on
 the LCD that isn't real. (The original "no color album art" cut was
 lifted: FULL COLOR is an opt-in Artwork Style; the two-tone renders stay

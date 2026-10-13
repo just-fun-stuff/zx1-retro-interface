@@ -150,7 +150,10 @@ STOP)  13. bool endOfTrack  14. bool mute  15. int shuffleMode
 may differ from Genie's stored value for VBR)  19–22 int (video
 bitrate/frame w/h; 22 = unshuffledIndex)  23–29 int (stream
 counts/indices, PAR w/h)  30. `readInt()!=0 ? Rect : null`
-31. bool seekable  32. bool pausable.
+31. bool seekable  32. bool pausable. (Fields 13–29 here are 17 ints;
+the skip recipe under the listener map has 16 — one is off by one. The
+poll reads nothing past field 12. See "Why PlayInfo's `seekable` is not
+consulted" below.)
 
 Other `IPlayerRemote` accessors (decompile-verified): `getRepeatMode`
 txn 21, `getShuffleMode` txn 19, `getShuffledIndex` txn 26,
@@ -183,8 +186,15 @@ work there even though they are void for us.
   as its integer code: `0` Success, `305` Error_EmptyPlaylist (terminal
   — the query matched nothing), `308` Error_CursorUnavailable,
   `50432` InvalState / `50433` StateChange (transitional).
-- Also mapped (documented, not issued): close=4, play=6, pause=8,
-  seek=9, prevChapter=11, nextChapter=12, seekChapter=13, prevTrack=14,
+- `seek(int positionMs, int origin)` → **txn 9** — proven live (see
+  queue-next below); issued to restore the playhead after a queue-next
+  reopen and by home's scrub (see "Seek from home" below). `pause()` →
+  **txn 8** — argumentless, issued only to keep a paused player paused
+  after either of those; not yet seen running live — a seek leaves a
+  paused engine paused ("Seek from home"), so only a queue-next reopen
+  from PAUSE issues it.
+- Also mapped (documented, not issued): close=4, play=6,
+  prevChapter=11, nextChapter=12, seekChapter=13, prevTrack=14,
   nextTrack=15, seekTrack=16, setShuffleMode=18, setRepeatMode=20,
   closeSync=47, applyPlayRange=49, clearPlayRange=50, playlistUpdated=52.
 
@@ -541,6 +551,96 @@ order (an earlier insert-after-current design made stacked adds come
 out last-added-first). Appending also removes any play_order gap
 arithmetic: rewrites normalize 0..n-1 and an in-place add just writes
 tail+1.
+
+**Seek from home — the scrub (PROVEN LIVE 2026-10-12).** Holding
+home's art panel raises a position strip, a sideways drag sets a target,
+and lifting the finger issues one seek. Seek on release, never live:
+every write is a full registered-client pass, and one the service leaves
+unanswered wedges the write path until reboot ("The open() wedge"), so
+one gesture costs exactly one write. The pass is `PlayerHandoff`'s
+`Request.seek`, logged under `ZX1Handoff` with the label `seek M:SS`:
+
+1. Register exactly as a queue request does (`getPlayerInterface(name,
+   Bundle)`, `addListener`, `setServerKeepAlive`), then read the oracle
+   — `media list before: uri=… index=…` names the list about to be
+   seeked. Nothing is opened, joined or played.
+2. Refuse unless getCurrentInfo still reports the scrubbed `trackId` —
+   PlayInfo's own id, Genie or platform, whichever the playing list
+   carries — in PLAY or PAUSE with a duration. The finger lifted a moment
+   ago, and a target computed for one track must never land on the next.
+3. Clamp the target to `[0, duration − 1000]` against that fresh read and
+   send one `seek(positionMs, BEGIN)` (txn 9).
+4. MediaError 0 is only submission, so confirm by reading back:
+   getCurrentInfo every 300 ms, for up to 3 s, until the same track,
+   still PLAY or PAUSE, reports a position no more than 1000 ms behind
+   the target and no more than `time since submission + 1500 ms` ahead
+   of it (PLAY keeps running past the target; PAUSE should sit on it).
+   An `onClosed` ends the watch.
+5. If the player was paused and the read-back — or one more read 300 ms
+   later, since a resume may trail the position — says PLAY, send the
+   stock controller's `pause` (txn 8) once. A failed restore is logged,
+   never fatal: the seek itself landed.
+6. Report confirmed or failed to home, never an intent tier. Home then
+   polls at once (`MediaServiceClient.pollNow`), so the strip shows the
+   player's own position before it hides.
+
+Home keeps the gesture back entirely when it could only fail: no binder
+data, not PLAY or PAUSE, storage not READY, or the wedge latch already
+set this session.
+
+The live run (debug build; holds and drags injected as raw touch
+events) answered everything the pass was built to ask:
+
+- **Seek works on a list Sony's own UI opened.** Sony's album list —
+  `media list before: uri=content://com.sony.walkman.providers.GenieMediaStore/external/audio/albums/122/media
+  index=0 selection=null sort=null`, an ALAC 48/24 track — seeked from a
+  registered client that never opened it: `seek 70086ms -> MediaError
+  0`, `event onSeek`, read back 70144 in PLAY. Genie descriptors die at
+  *play* under our identity ("ROOT CAUSE"), but a seek on a list the
+  engine has already resolved does not resolve it again. The launcher's
+  own platform album list (`content://media/external/audio/media`,
+  `album_id=165`, sort `track`) seeked the same way: 157744 submitted,
+  157802 read back.
+- **Seek leaves a paused engine paused.** Paused at 3:13 on the platform
+  list, seeked back to 85502: `seek from PAUSE: read-back state 1,
+  settled state 1`, position read back exactly. The restore never fires,
+  so **pause txn 8 has still not run live**.
+- **A whole pass costs 240–325 ms** from the request's arrival:
+  `seek ok in 240ms`, `316ms` and `324ms` from PLAY, `325ms` from PAUSE
+  (which includes the extra settle read). The read-back confirmed on its
+  first or second read, and `event onSeek` arrived every time — once
+  ahead of the transact's own reply.
+- **No wedge.** Four seeks across both kinds of list, all answered.
+
+Also seen on the glass: a hold while stopped raised nothing and sent
+nothing; a hold released without a drag raised the strip at the polled
+position and sent nothing; a drag ending under a second of track from
+where it began sent nothing. The LCD and TUBE AMP strips render as
+designed.
+
+Other lines a scrub can leave: `seek wants trackId=<id> in PLAY or
+PAUSE; player reports …; refusing` means the track changed or playback
+stopped between the lift and the request, and nothing was sent;
+`seek target <n>ms clamped to <m>ms (duration <d>ms)` means the fresh
+duration was shorter than the one the strip was drawn against;
+`binder tier timed out before any transact` followed by `binder tier
+unavailable …; binder-only requests take no intent fallback` means
+registration never completed, and again nothing was sent.
+
+**Why PlayInfo's `seekable` is not consulted.** The read-side field list
+ends PlayInfo with `31. bool seekable  32. bool pausable` after the
+Rect, but two descriptions of what comes before that Rect disagree. The
+field list's fields 13–29 are 17 ints between the PlayState ordinal and
+the Rect's presence int; the skip recipe at the end of the listener
+transaction map ("16 ints, optional 4-int Rect, 2 ints"), which
+`PlayerHandoff.skipPlayInfo` follows, has 16. One of them is off by one,
+and a reader on the wrong count would take a stream field for the Rect's
+presence int and read `seekable` from the wrong slot. So home gates the
+scrub only on fields it already reads every poll (state, duration,
+position) and lets the read-back judge each seek. One device read should
+settle it: in a getCurrentInfo reply, count the ints left after the
+PlayState ordinal (`dataAvail() / 4`) — 19 if the recipe is right, 20 if
+the field list is, and 4 more either way when a Rect is present.
 
 **Playlists as platform playlists — shipped, awaiting the device run.**
 The queue-scratch list generalizes: every launcher playlist *is* a

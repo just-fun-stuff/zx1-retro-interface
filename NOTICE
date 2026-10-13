@@ -18,7 +18,9 @@ Summary of modifications (2026):
   timing, and audio format live from the firmware player's service
   binder and Sony's media database (this firmware broadcasts no
   metadata), rendering the track's album art in period LCD tones or
-  full color and scrolling long titles MiniDisc-deck style;
+  full color and scrolling long titles MiniDisc-deck style, with a
+  hidden hold-and-slide scrub on the album art that seeks within the
+  playing track;
 - added an in-launcher music library browser (playlists / artists /
   albums / songs) over the firmware's media database, cached for
   instant opens and refreshed by a short-lived broadcast-triggered
