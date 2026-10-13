@@ -345,6 +345,15 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         super.onDestroy();
     }
 
+    /**
+     * Home is the bottom of the stack, so back stays put, as on the stock
+     * launchers. The default finish() would surface whatever task sits
+     * behind - once a system Settings screen, which then took home's taps.
+     */
+    @Override
+    public void onBackPressed() {
+    }
+
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
