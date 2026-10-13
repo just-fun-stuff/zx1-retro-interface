@@ -71,6 +71,15 @@ import java.util.List;
  * descriptor, restores the playhead/pause state afterwards, and never
  * falls into the intent tiers - a failed queue edit reports failure
  * rather than replacing the queue with one file in the Sony UI.
+ *
+ * A {@link Request#seek} request (the home scrub) registers the same way
+ * but opens nothing: one documented seek on whatever list is playing -
+ * the launcher's or Sony's own - and only while the player is still on
+ * the scrubbed track, since a target computed for one track must never
+ * land on another. The seek's MediaError only says the task was
+ * submitted, so success means the new position was read back from
+ * getCurrentInfo; a PAUSE stays PAUSE. Like a queue edit it never falls
+ * into the intent tiers: a seek the binder cannot land reports failure.
  */
 final class PlayerHandoff {
 
@@ -81,11 +90,20 @@ final class PlayerHandoff {
     static final int TIER_FAILED = 3;
 
     interface Listener {
-        /** Main thread, exactly once per request. */
+        /**
+         * Main thread, exactly once per request. A binder-only request
+         * ({@link Request#isBinderOnly}) hears only {@link #TIER_BINDER_QUEUE}
+         * - for a seek: the new position was read back from the player -
+         * or {@link #TIER_FAILED}; never an intent tier.
+         */
         void onHandoff(int tier);
     }
 
-    /** One playback selection: a queue query plus one-file fallback data. */
+    /**
+     * One request: a playback selection (a queue query plus one-file
+     * fallback data), a queue-next descriptor ({@link #directQueue}), or a
+     * seek on the playing track ({@link #seek}).
+     */
     static final class Request {
         /** The Genie URI whose rows become the player's queue. */
         final Uri queueUri;
@@ -167,6 +185,43 @@ final class PlayerHandoff {
             request.restorePause = restorePause;
             return request;
         }
+
+        /*
+         * Seek-only mode (the home scrub): no open, no Genie join, no
+         * play - one seek on the list already playing. -1 unless
+         * {@link #seek} built this.
+         */
+        int seekOnlyMs = -1;
+
+        boolean isSeekOnly() {
+            return seekOnlyMs >= 0;
+        }
+
+        /**
+         * Requests that live or die on the binder: a queue edit or a seek.
+         * The intent tiers would replace the queue with one file in the
+         * Sony UI - worse than doing nothing - so these report failure.
+         */
+        boolean isBinderOnly() {
+            return isDirectQueue() || isSeekOnly();
+        }
+
+        /**
+         * A scrub's seek: move the playhead of the track now playing to
+         * {@code positionMs}. {@code trackId} is the id the player itself
+         * reported for that track (PlayInfo.trackId - a Genie or platform
+         * id, whichever the playing list carries, not the joined Genie
+         * row): the seek is refused unless the player still reports it.
+         * The position is clamped against the player's own duration.
+         */
+        static Request seek(long trackId, int positionMs, String label) {
+            Request request = new Request(null, null, 0, trackId,
+                    null, null, -1, -1, null, label);
+            // Never negative: a request built here must stay seek-only, or
+            // it would read as a plain selection and reach the intent tiers.
+            request.seekOnlyMs = Math.max(0, positionMs);
+            return request;
+        }
     }
 
     private static final String TAG = "ZX1Handoff";
@@ -182,12 +237,25 @@ final class PlayerHandoff {
     private static final long OPEN_SETTLE_WINDOW_MS = 4000L;
     /** How long play() submissions may take to produce the PLAY state. */
     private static final long PLAY_SETTLE_WINDOW_MS = 5000L;
+    /** How long a seek may take to show its position in getCurrentInfo. */
+    private static final long SEEK_SETTLE_WINDOW_MS = 3000L;
     private static final long SETTLE_STEP_MS = 300L;
+    /** A seek never lands closer than this to the track's end. */
+    private static final int SEEK_TAIL_MARGIN_MS = 1000;
+    /**
+     * The read-back window around a seek target: this far behind it, and
+     * as far ahead as playback could have run since the seek plus this.
+     * PLAY keeps advancing past the target; PAUSE should sit on it.
+     */
+    private static final int SEEK_BEHIND_TOLERANCE_MS = 1000;
+    private static final int SEEK_AHEAD_TOLERANCE_MS = 1500;
 
     private final Context context;
     private final Request request;
     private final Listener listener;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    /** When the request arrived, for the seek pass's end-to-end figure. */
+    private final long requestedAtMs = SystemClock.uptimeMillis();
 
     private HandlerThread workerThread;
     private Handler worker;
@@ -235,13 +303,13 @@ final class PlayerHandoff {
                 // The service took our call and went silent: it is wedged,
                 // and the intent tiers would only spin against it.
                 serviceWedged = true;
-                Log.w(TAG, "open()/play() never answered for " + request.label
+                Log.w(TAG, "a write transact never answered for " + request.label
                         + "; player service wedged - failing fast until reboot");
                 deliver(TIER_FAILED);
                 return;
             }
             Log.w(TAG, "binder tier timed out before any transact for "
-                    + request.label + "; trying the intent tiers");
+                    + request.label + "; falling back");
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -283,6 +351,15 @@ final class PlayerHandoff {
         new PlayerHandoff(context, request, listener).start();
     }
 
+    /**
+     * Any thread. True once a write transact went unanswered in this
+     * process: every later request then fails fast, so a caller can keep
+     * back a control whose only possible outcome is failure.
+     */
+    static boolean isServiceWedged() {
+        return serviceWedged;
+    }
+
     private void start() {
         workerThread = new HandlerThread("zx1-handoff");
         workerThread.start();
@@ -302,9 +379,9 @@ final class PlayerHandoff {
             deliver(TIER_FAILED);
             return;
         }
-        if ((request.queueUri == null && !request.isDirectQueue())
+        if ((request.queueUri == null && !request.isBinderOnly())
                 || !SonyWalkmanContract.isInstalled(context.getPackageManager())) {
-            Log.i(TAG, request.queueUri == null && !request.isDirectQueue()
+            Log.i(TAG, request.queueUri == null && !request.isBinderOnly()
                     ? "no queue uri for " + request.label + "; intent tiers only"
                     : "player package not installed; skipping binder tier");
             worker.post(new Runnable() {
@@ -363,6 +440,10 @@ final class PlayerHandoff {
             setServerKeepAlive(player, clientId);
             Log.i(TAG, "registered client " + clientId + " on " + playerName);
             readMediaListInfo(player, "before");
+            if (request.isSeekOnly()) {
+                runSeekOnly(player);
+                return;
+            }
             if (request.isDirectQueue()) {
                 runDirectQueue(player);
                 return;
@@ -471,6 +552,159 @@ final class PlayerHandoff {
                 + " playTime=" + (after == null ? "?" : after.playTimeMs)
                 + " index=" + request.directStartIndex + ")");
         deliver(TIER_BINDER_QUEUE);
+    }
+
+    /**
+     * Worker thread. The scrub's seek: one documented seek (txn 9,
+     * SeekOrigin.BEGIN) on whatever list is playing - nothing is opened,
+     * joined or played. Refused unless the player still reports the
+     * scrubbed track in PLAY or PAUSE with a known duration: the finger
+     * lifted a moment ago, and a target computed for one track must never
+     * land on the next. The reply's MediaError 0 only means the task was
+     * submitted, so success is the position read back from getCurrentInfo.
+     */
+    private void runSeekOnly(IBinder player) throws RemoteException {
+        MediaServiceClient.Snapshot before = safeCurrentInfo(player);
+        if (before == null || before.trackId != request.trackId
+                || (before.state != SonyWalkmanContract.PLAY_STATE_PLAY
+                        && before.state != SonyWalkmanContract.PLAY_STATE_PAUSE)
+                || before.durationMs <= 0) {
+            Log.w(TAG, "seek wants trackId=" + request.trackId
+                    + " in PLAY or PAUSE; player reports " + describe(before)
+                    + "; refusing: " + request.label);
+            deliver(TIER_FAILED);
+            return;
+        }
+        int positionMs = Math.min(request.seekOnlyMs,
+                Math.max(0, before.durationMs - SEEK_TAIL_MARGIN_MS));
+        if (positionMs != request.seekOnlyMs) {
+            Log.i(TAG, "seek target " + request.seekOnlyMs + "ms clamped to "
+                    + positionMs + "ms (duration " + before.durationMs + "ms) for "
+                    + request.label);
+        }
+        long seekSubmittedAtMs = SystemClock.uptimeMillis();
+        TaskResult sought = seek(player, positionMs);
+        Log.i(TAG, "seek " + positionMs + "ms -> MediaError " + sought.error
+                + " taskId=" + sought.taskId + " for " + request.label);
+        puntWatchdog();
+        if (sought.error != SonyWalkmanContract.MEDIA_ERROR_SUCCESS) {
+            Log.w(TAG, "seek task not accepted for " + request.label);
+            deliver(TIER_FAILED);
+            return;
+        }
+        MediaServiceClient.Snapshot landed =
+                awaitSeekLanded(player, positionMs, seekSubmittedAtMs);
+        if (delivered) {
+            return;
+        }
+        if (landed == null) {
+            deliver(TIER_FAILED);
+            return;
+        }
+        MediaServiceClient.Snapshot after = landed;
+        if (before.state == SonyWalkmanContract.PLAY_STATE_PAUSE) {
+            after = keepPaused(player, landed);
+            if (delivered) {
+                return;
+            }
+        }
+        // The first measured figure for the whole register -> seek ->
+        // confirm pass, from the request's arrival.
+        Log.i(TAG, "seek ok in " + (SystemClock.uptimeMillis() - requestedAtMs)
+                + "ms (was trackId=" + before.trackId + " state=" + before.state
+                + " playTime=" + before.playTimeMs + "; now state=" + after.state
+                + " playTime=" + after.playTimeMs + ") for " + request.label);
+        deliver(TIER_BINDER_QUEUE);
+    }
+
+    /**
+     * Polls getCurrentInfo, the same read as the play watch, until the
+     * scrubbed track, still in PLAY or PAUSE, reports a position the seek
+     * explains: no further behind the target than the tolerance, no
+     * further ahead than playback could have run since submission plus
+     * the tolerance. Null - after logging the last read - when that never
+     * shows inside the window or the service closes the list; null
+     * without a line once delivered.
+     */
+    private MediaServiceClient.Snapshot awaitSeekLanded(IBinder player, int positionMs,
+                                                        long seekSubmittedAtMs) {
+        long deadline = SystemClock.uptimeMillis() + SEEK_SETTLE_WINDOW_MS;
+        MediaServiceClient.Snapshot last = null;
+        while (SystemClock.uptimeMillis() < deadline && !delivered) {
+            MediaServiceClient.Snapshot now = safeCurrentInfo(player);
+            puntWatchdog();
+            if (now != null) {
+                last = now;
+                long sinceSeekMs = SystemClock.uptimeMillis() - seekSubmittedAtMs;
+                if (now.trackId == request.trackId
+                        && (now.state == SonyWalkmanContract.PLAY_STATE_PLAY
+                                || now.state == SonyWalkmanContract.PLAY_STATE_PAUSE)
+                        && now.playTimeMs >= positionMs - SEEK_BEHIND_TOLERANCE_MS
+                        && now.playTimeMs <= positionMs + sinceSeekMs
+                                + SEEK_AHEAD_TOLERANCE_MS) {
+                    return now;
+                }
+            }
+            if (listClosedEvent) {
+                Log.i(TAG, "list closed by the service; abandoning the seek watch for "
+                        + request.label);
+                break;
+            }
+            SystemClock.sleep(SETTLE_STEP_MS);
+        }
+        if (!delivered) {
+            Log.w(TAG, "seek " + positionMs + "ms never read back (last read: "
+                    + describe(last) + ") for " + request.label);
+        }
+        return null;
+    }
+
+    /**
+     * A scrub leaves a paused player paused. The engine does this itself -
+     * a live run read PAUSE before and after the seek (findings "Seek from
+     * home") - so this is a guard: a resume could trail the position
+     * read-back, so a read-back still in PAUSE is read once more a step
+     * later before deciding. Playing then: the stock controller's own
+     * pause (txn 8), once. A failed restore is logged, never fatal - the
+     * seek itself landed. Returns the last read, for the outcome line.
+     */
+    private MediaServiceClient.Snapshot keepPaused(IBinder player,
+                                                   MediaServiceClient.Snapshot landed) {
+        MediaServiceClient.Snapshot settled = landed;
+        if (landed.state != SonyWalkmanContract.PLAY_STATE_PLAY) {
+            SystemClock.sleep(SETTLE_STEP_MS);
+            MediaServiceClient.Snapshot later = safeCurrentInfo(player);
+            puntWatchdog();
+            if (later != null) {
+                settled = later;
+            }
+        }
+        // The device answer to the open question, one line per paused seek.
+        Log.i(TAG, "seek from PAUSE: read-back state " + landed.state
+                + ", settled state " + settled.state + " for " + request.label);
+        if (settled.state != SonyWalkmanContract.PLAY_STATE_PLAY || delivered) {
+            return settled;
+        }
+        TaskResult paused;
+        try {
+            paused = pause(player);
+        } catch (RemoteException exception) {
+            Log.w(TAG, "pause restore failed for " + request.label + " (" + exception + ")");
+            return settled;
+        }
+        Log.i(TAG, "pause restore -> MediaError " + paused.error
+                + " taskId=" + paused.taskId + " for " + request.label);
+        puntWatchdog();
+        SystemClock.sleep(SETTLE_STEP_MS);
+        MediaServiceClient.Snapshot restored = safeCurrentInfo(player);
+        return restored != null ? restored : settled;
+    }
+
+    /** One PlayInfo for a log line. */
+    private static String describe(MediaServiceClient.Snapshot info) {
+        return info == null ? "no PlayInfo"
+                : "trackId=" + info.trackId + " state=" + info.state
+                        + " playTime=" + info.playTimeMs + " duration=" + info.durationMs;
     }
 
     /** seek(positionMs, SeekOrigin.BEGIN) - txn 9, both args plain ints. */
@@ -1189,12 +1423,12 @@ final class PlayerHandoff {
             }
             fallbackClaimed = true;
         }
-        if (request.isDirectQueue()) {
-            // A queue edit either lands whole on the binder or reports
-            // failure; the intent tiers would replace the queue with one
-            // file in the Sony UI - worse than doing nothing.
+        if (request.isBinderOnly()) {
+            // A queue edit or a seek either lands whole on the binder or
+            // reports failure; the intent tiers would replace the queue
+            // with one file in the Sony UI - worse than doing nothing.
             Log.w(TAG, "binder tier unavailable for " + request.label
-                    + "; queue requests take no intent fallback");
+                    + "; binder-only requests take no intent fallback");
             deliver(TIER_FAILED);
             return;
         }

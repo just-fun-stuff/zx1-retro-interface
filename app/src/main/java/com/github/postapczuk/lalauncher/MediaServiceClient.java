@@ -198,6 +198,23 @@ final class MediaServiceClient {
         }
     };
 
+    /**
+     * Worker thread. The immediate poll {@link #pollNow} asks for: drop the
+     * chain's pending run and take it now, inline - the run re-posts its
+     * one delayed successor, so the chain continues from here.
+     */
+    private final Runnable pollNowRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Handler w = worker;
+            if (w == null) {
+                return;
+            }
+            w.removeCallbacks(pollRunnable);
+            pollRunnable.run();
+        }
+    };
+
     MediaServiceClient(Context context, Listener listener) {
         this.context = context;
         this.listener = listener;
@@ -223,6 +240,28 @@ final class MediaServiceClient {
         });
         bindMediaService();
         worker.post(pollRunnable);
+    }
+
+    /**
+     * Main thread. Runs the next poll now; no-op unless started. Never
+     * creates a second poll chain.
+     *
+     * The reschedule happens on the worker, not here: removing the pending
+     * run from this thread cannot see a run already executing, which would
+     * re-post its successor after ours and leave two chains. The worker is
+     * one looper thread, so {@code pollNowRunnable} never overlaps a poll:
+     * if a poll is running (or due first), it runs after that poll and
+     * removes the successor the poll just posted; otherwise it removes the
+     * pending delayed run. Either way exactly one run is pending afterwards,
+     * and the read this asks for starts after the call - a poll that was
+     * already mid-read does not stand in for it.
+     */
+    void pollNow() {
+        if (!started) {
+            return;
+        }
+        worker.removeCallbacks(pollNowRunnable);
+        worker.post(pollNowRunnable);
     }
 
     /** Main thread. Stops polling and unbinds; call from onPause. */

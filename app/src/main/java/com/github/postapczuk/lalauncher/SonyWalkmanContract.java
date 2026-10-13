@@ -105,14 +105,17 @@ final class SonyWalkmanContract {
     /**
      * IPlayerRemote.pause() - the stock controller's own pause is the bare
      * call (PlaybackController.pause() forwards it unchanged, unlike play).
-     * Issued only to restore a PAUSE state after a queue-next reopen.
+     * Issued only to keep a PAUSE state: after a queue-next reopen, and
+     * after a home scrub's seek if that seek set a paused player playing.
      */
     static final int TRANSACTION_PAUSE = 8;
     /**
      * IPlayerRemote.seek(int positionMs, int origin) - the origin int is
      * IPlaybackController.SeekOrigin.ordinal(): BEGIN=0, CURRENT=1, END=2
      * (decompile-verified). Issued once after a queue-next reopen to put
-     * the playhead back where it was.
+     * the playhead back where it was, and once per home scrub on whatever
+     * list is playing (the launcher's or Sony's own), confirmed by reading
+     * the position back.
      */
     static final int TRANSACTION_SEEK = 9;
     /** SeekOrigin.BEGIN - absolute position from the track start. */
