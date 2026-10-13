@@ -263,7 +263,9 @@
              off the glass. It holds one of two things:
              the art panel - the current track's cover in the Artwork Style
              whenever its art is actually readable (B6), the two-tone
-             dithered plasma otherwise;
+             dithered plasma otherwise - with the hidden track scrub on
+             exactly its bounds: a hold raises a position strip along the
+             panel's foot, and lifting the finger issues one seek;
              or, whenever the music volume is out of reach (USB storage,
              Sony's reindex after it, the post-USB library rebuild), the
              storage panel. That re-cuts the glass in place, the way the
@@ -284,6 +286,14 @@
                 android:contentDescription="@null"
                 android:padding="1dp"
                 android:scaleType="fitXY" />
+
+            <com.github.postapczuk.lalauncher.TrackScrubView
+                android:id="@+id/lcd_scrub"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="8dp"
+                android:importantForAccessibility="no"
+                android:padding="1dp" />
 
             <include
                 android:id="@+id/storage_panel"

@@ -43,7 +43,8 @@ import java.util.Locale;
  * Transport and volume are the ZX1's physical side keys; the screen keeps
  * only what touch must do.
  */
-public class FavouriteAppsActivity extends Activity implements View.OnClickListener {
+public class FavouriteAppsActivity extends Activity
+        implements View.OnClickListener, TrackScrubView.Listener {
 
     // Plasma raster: ~2dp cells at the panel's on-device size (298dp wide,
     // ~173dp tall in the 480x782 app window), stretched by the ImageView with
@@ -85,6 +86,8 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     private TransportGlyphView lcdGlyphView;
     private TextView footerOutputView;
     private ImageView panelView;
+    // The hidden track scrub on the art panel's bounds: a hold raises it.
+    private TrackScrubView scrubView;
     private View infoWindowView;
     private View spectrumBarsView;
     private TextView windowClockView;
@@ -228,6 +231,9 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         lcdGlyphView = (TransportGlyphView) findViewById(R.id.lcd_glyph);
         footerOutputView = (TextView) findViewById(R.id.footer_output);
         panelView = (ImageView) findViewById(R.id.lcd_panel);
+        scrubView = (TrackScrubView) findViewById(R.id.lcd_scrub);
+        scrubView.setColors(skin.glass, skin.ink, skin.inkDim);
+        scrubView.setListener(this);
         infoWindowView = findViewById(R.id.info_window);
         spectrumBarsView = findViewById(R.id.spectrum_bars);
         windowClockView = (TextView) findViewById(R.id.window_clock);
@@ -317,6 +323,10 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
     @Override
     protected void onPause() {
         resumed = false;
+        // Hides the strip and drops a hold or drag; no scrub may start again
+        // until a fresh poll after the next resume allows it.
+        scrubView.cancelScrub();
+        scrubView.setScrubAllowed(false);
         StorageState.removeListener(storageListener);
         lcdTitleView.setActive(false);
         spectrum.setActive(false);
@@ -376,6 +386,27 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
             default:
                 break;
         }
+    }
+
+    /**
+     * The scrub strip's release: one documented seek on the playing track,
+     * never an intent tier. A confirmed seek asks for a poll at once, so the
+     * strip settles on the player's real position without waiting out the
+     * poll interval.
+     */
+    @Override
+    public void onScrubCommit(long trackId, int targetMs) {
+        PlayerHandoff.play(this, PlayerHandoff.Request.seek(trackId, targetMs,
+                "seek " + formatTime(targetMs)), new PlayerHandoff.Listener() {
+            @Override
+            public void onHandoff(int tier) {
+                boolean confirmed = tier == PlayerHandoff.TIER_BINDER_QUEUE;
+                scrubView.onSeekFinished(confirmed);
+                if (confirmed && resumed) {
+                    mediaClient.pollNow();
+                }
+            }
+        });
     }
 
     private void updateClock() {
@@ -456,13 +487,13 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
      * The storage phase ({@link StorageState}). Anything but READY re-cuts
      * the glass in place, the way the info window's CLOCK does: the status
      * row and the PROGRAM INDEX latch stay, and everything between them -
-     * the track lines, the art panel, both soft-keys - gives way to the
-     * storage panel, since none of it can be honest or useful while the
-     * music is out of reach. The title glide and the plasma stop with the
-     * glass they animate. Back at READY the now-playing glass returns, and
-     * the cover cache is flushed after any outage - including one that
-     * happened entirely while home was paused ({@link
-     * StorageState#outagesEnded}).
+     * the track lines, the art panel with the scrub on it, both soft-keys -
+     * gives way to the storage panel, since none of it can be honest or
+     * useful while the music is out of reach. The title glide and the
+     * plasma stop with the glass they animate. Back at READY the
+     * now-playing glass returns, and the cover cache is flushed after any
+     * outage - including one that happened entirely while home was paused
+     * ({@link StorageState#outagesEnded}).
      */
     private void applyStorage(StorageState.Snapshot snapshot) {
         boolean blocked = snapshot.phase != StorageState.Phase.READY;
@@ -475,11 +506,15 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
             int glass = blocked ? View.GONE : View.VISIBLE;
             trackLinesView.setVisibility(glass);
             panelView.setVisibility(glass);
+            scrubView.setVisibility(glass);
             libraryKeyView.setVisibility(glass);
             playlistsKeyView.setVisibility(glass);
             storagePanelView.setVisibility(blocked ? View.VISIBLE : View.GONE);
             if (blocked) {
                 stopPlasma();
+                // A strip in any state goes with the panel; the outcome of
+                // a seek still out is ignored when it arrives.
+                scrubView.cancelScrub();
                 // The analyzer yields a running pass when storage goes away
                 // (partial kept, nothing marked failed), so forget the last
                 // request - as CLOCK does - and the playing track is asked
@@ -548,6 +583,25 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
             heldTime = buildTimeLine(snapshot);
         }
         renderPlaybackState();
+        if (snapshot != null) {
+            scrubView.setPlayhead(snapshot.trackId, snapshot.playTimeMs, snapshot.durationMs);
+        }
+        scrubView.setScrubAllowed(scrubPossible());
+    }
+
+    /**
+     * A scrub needs the player's own report (never the isMusicActive()
+     * fallback, which has no playhead) of a real track at a real position,
+     * PLAY or PAUSE, with the music in reach and a write path that has not
+     * wedged this session.
+     */
+    private boolean scrubPossible() {
+        MediaServiceClient.Snapshot snapshot = nowPlaying;
+        return resumed && !storageBlocked && snapshot != null
+                && snapshot.trackId > 0 && snapshot.durationMs > 0 && snapshot.playTimeMs >= 0
+                && (snapshot.state == SonyWalkmanContract.PLAY_STATE_PLAY
+                        || snapshot.state == SonyWalkmanContract.PLAY_STATE_PAUSE)
+                && !PlayerHandoff.isServiceWedged();
     }
 
     /**
@@ -845,7 +899,8 @@ public class FavouriteAppsActivity extends Activity implements View.OnClickListe
         return line.length() == 0 ? null : line.toString();
     }
 
-    private static String formatTime(int milliseconds) {
+    /** M:SS, minutes unwrapped; the scrub strip's readouts use it too. */
+    static String formatTime(int milliseconds) {
         int totalSeconds = milliseconds / 1000;
         return String.format(Locale.US, "%d:%02d", totalSeconds / 60, totalSeconds % 60);
     }
